@@ -1,10 +1,7 @@
-import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+const mysql = require('mysql2/promise');
+require('dotenv').config({ path: '.env.local' });
 
 async function createAdminUser() {
   const connection = await mysql.createConnection({

@@ -1,6 +1,6 @@
-import mysql from 'mysql2/promise';
-import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
 
 async function initializeDatabase() {
   const connection = await mysql.createConnection({
