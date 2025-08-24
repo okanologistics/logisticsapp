@@ -18,14 +18,39 @@ export async function POST(request: Request) {
 
     console.log('Login attempt for:', email);
 
+    // Check if database is configured
+    if (!process.env.MYSQL_HOST || process.env.MYSQL_HOST === 'localhost') {
+      console.error('Database not configured for production environment');
+      return NextResponse.json(
+        { 
+          error: 'Database not configured', 
+          message: 'Please set up cloud database credentials',
+          debug: {
+            env: process.env.NODE_ENV,
+            host: process.env.MYSQL_HOST || 'not set'
+          }
+        },
+        { status: 500 }
+      );
+    }
+
     // Get user from database
     let user;
     try {
+      console.log('Database connection successful');
       user = await db.findUserByEmail(email);
-    } catch (dbError) {
+    } catch (dbError: any) {
       console.error('Database error:', dbError);
       return NextResponse.json(
-        { error: 'Database connection error' },
+        { 
+          error: 'Database connection error',
+          message: dbError.message || 'Failed to connect to database',
+          debug: {
+            code: dbError.code,
+            errno: dbError.errno,
+            host: process.env.MYSQL_HOST
+          }
+        },
         { status: 500 }
       );
     }
@@ -87,10 +112,17 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'An error occurred during login' },
+      { 
+        error: error instanceof Error ? error.message : 'An error occurred during login',
+        message: 'Login failed',
+        debug: {
+          stack: error.stack,
+          name: error.name
+        }
+      },
       { status: 500 }
     );
   }
