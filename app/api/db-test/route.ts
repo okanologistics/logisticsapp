@@ -38,7 +38,8 @@ export async function GET() {
     
     // Check tables
     const [tables] = await connection.query('SHOW TABLES');
-    console.log('Available tables:', tables);
+    const tablesArray = tables as any[];
+    console.log('Available tables:', tablesArray);
     
     connection.release();
 
@@ -46,11 +47,11 @@ export async function GET() {
       success: true,
       message: 'Database connection successful',
       envCheck,
-      tablesCount: tables.length,
-      tables: tables.map((table: any) => Object.values(table)[0])
+      tablesCount: tablesArray.length,
+      tables: tablesArray.map((table: any) => Object.values(table)[0])
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Database connection test failed:', error);
     
     return NextResponse.json({
