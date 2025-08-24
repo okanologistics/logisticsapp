@@ -1,0 +1,6 @@
+-- Add new columns to profiles table
+ALTER TABLE profiles
+ADD COLUMN IF NOT EXISTS phone_number VARCHAR(20) NULL,
+ADD COLUMN IF NOT EXISTS full_name VARCHAR(255) NULL,
+ADD COLUMN IF NOT EXISTS monthly_return DECIMAL(10,2) DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(255) NULL;

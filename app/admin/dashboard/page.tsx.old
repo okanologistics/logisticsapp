@@ -1,0 +1,385 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { 
+  UserPlus, PlusCircle, Edit, Users, DollarSign, TrendingUp, Bike,
+  BarChart4, Calendar, ClipboardList, CheckCircle, XCircle
+} from 'lucide-react';
+import InvestorForm from '@/components/InvestorForm';
+import { InvestorDetails } from '@/components/InvestorDetails';
+import { createInvestor, updateInvestor, getDashboardData } from './actions';
+import type { Investor, InvestorInput } from '@/types/database';
+
+interface InvestmentStats {
+  totalInvestment: number;
+  totalInvestors: number;
+  activeInvestors: number;
+  totalBikes: number;
+  monthlyReturns: number;
+  totalReturns: number;
+}
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState<InvestmentStats>({
+    totalInvestment: 0,
+    totalInvestors: 0,
+    activeInvestors: 0,
+    totalBikes: 0,
+    monthlyReturns: 0,
+    totalReturns: 0
+  });
+  
+  const [investors, setInvestors] = useState<Investor[]>([]);
+  const [selectedInvestor, setSelectedInvestor] = useState<Investor | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const data = await getDashboardData();
+      
+      if (data.investors) {
+        const activeInvestors = data.investors.filter(investor => investor.status === 'active');
+        
+        setStats({
+          totalInvestment: data.investors.reduce((sum, inv) => sum + (inv.total_investment || 0), 0),
+          totalInvestors: data.investors.length,
+          activeInvestors: activeInvestors.length,
+          totalBikes: data.investors.reduce((sum, inv) => sum + (inv.number_of_bikes || 0), 0),
+          monthlyReturns: activeInvestors.reduce((sum, inv) => sum + (inv.monthly_return || 0), 0),
+          totalReturns: data.payments?.reduce((sum, p) => 
+            p.status === 'completed' ? sum + (p.amount || 0) : sum, 0) || 0
+        });
+
+        setInvestors(data.investors);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateInvestor = async (data: InvestorInput) => {
+    try {
+      setError('');
+      await createInvestor(data);
+      setShowCreateDialog(false);
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error creating investor:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create investor');
+      throw error;
+    }
+  };
+
+  const handleEditInvestor = async (data: InvestorInput) => {
+    try {
+      if (!selectedInvestor) return;
+      setError('');
+      await updateInvestor(selectedInvestor.id, data);
+      setShowEditDialog(false);
+      setSelectedInvestor(null);
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error updating investor:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update investor');
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <PlusCircle className="w-4 h-4 mr-2" />
+          Create New Investor
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Total Investment</h3>
+          <p className="text-3xl font-bold text-orange-600">
+            ₦{stats.totalInvestment.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            {stats.totalBikes} Total Bikes
+          </p>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Monthly Returns</h3>
+          <p className="text-3xl font-bold text-green-600">
+            ₦{stats.monthlyReturns.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Total Returns: ₦{stats.totalReturns.toLocaleString()}
+          </p>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Active Investors</h3>
+          <p className="text-3xl font-bold text-blue-600">
+            {stats.activeInvestors}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Out of {stats.totalInvestors} Total Investors
+          </p>
+        </Card>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview" className="flex items-center">
+            <BarChart4 className="w-4 h-4 mr-2" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="investors" className="flex items-center">
+            <Users className="w-4 h-4 mr-2" />
+            Investors
+          </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center">
+            <ClipboardList className="w-4 h-4 mr-2" />
+            Payments
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="flex items-center">
+            <Calendar className="w-4 h-4 mr-2" />
+            Schedule
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Investment Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Total Investment</h3>
+                <p className="text-3xl font-bold">₦{stats.totalInvestment.toLocaleString()}</p>
+                <div className="mt-4 space-y-2">
+                  <p className="text-gray-500">Active Investors: {stats.activeInvestors}</p>
+                  <p className="text-gray-500">Total Bikes: {stats.totalBikes}</p>
+                  <p className="text-gray-500">Monthly Returns: ₦{stats.monthlyReturns.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="investors">
+          <Card className="p-6">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead className="text-right">Investment</TableHead>
+                    <TableHead className="text-right">Monthly Return</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {investors.map((investor) => (
+                    <TableRow key={investor.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{investor.full_name}</div>
+                          <div className="text-sm text-gray-500">
+                            {investor.number_of_bikes} Bike{investor.number_of_bikes !== 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{investor.email}</TableCell>
+                      <TableCell>{investor.phone_number}</TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          <div>₦{investor.total_investment.toLocaleString()}</div>
+                          <div className="text-sm text-gray-500">
+                            Since {new Date(investor.investment_date).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div>
+                          <div>₦{investor.monthly_return.toLocaleString()}</div>
+                          <div className="text-sm text-gray-500">
+                            {((investor.monthly_return * 12 / investor.total_investment) * 100).toFixed(1)}% Annual
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                          investor.status === 'active'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {investor.status === 'active' && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {investor.status === 'inactive' && <XCircle className="w-3 h-3 mr-1" />}
+                          {investor.status.charAt(0).toUpperCase() + investor.status.slice(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedInvestor(investor);
+                            setShowEditDialog(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payments">
+          {selectedInvestor && <InvestorDetails investorId={selectedInvestor.id} />}
+          {!selectedInvestor && (
+            <Card className="p-6">
+              <div className="text-center py-12">
+                <h3 className="text-lg font-semibold text-gray-500">
+                  Select an investor to view payment details
+                </h3>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="schedule">
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Payment Schedule</h2>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Investor</TableHead>
+                  <TableHead>Next Payout</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {investors
+                  .filter(inv => inv.status === 'active')
+                  .sort((a, b) => 
+                    new Date(a.next_payout_date).getTime() - new Date(b.next_payout_date).getTime()
+                  )
+                  .map(investor => (
+                    <TableRow key={investor.id}>
+                      <TableCell>{investor.full_name}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div>{new Date(investor.next_payout_date).toLocaleDateString()}</div>
+                          <div className="text-sm text-gray-500">
+                            {Math.ceil((new Date(investor.next_payout_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₦{investor.monthly_return.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                          investor.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {investor.status === 'active' && <CheckCircle className="w-3 h-3 mr-1" />}
+                          {investor.status === 'inactive' && <XCircle className="w-3 h-3 mr-1" />}
+                          {investor.status.charAt(0).toUpperCase() + investor.status.slice(1)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Create New Investor</DialogTitle>
+          </DialogHeader>
+          <InvestorForm 
+            mode="create"
+            onSubmit={handleCreateInvestor}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Edit Investor</DialogTitle>
+          </DialogHeader>
+          {selectedInvestor && (
+            <InvestorForm 
+              mode="edit"
+              initialData={selectedInvestor}
+              onSubmit={handleEditInvestor}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+    </div>
+  );
+}

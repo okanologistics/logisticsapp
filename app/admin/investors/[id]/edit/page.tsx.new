@@ -1,0 +1,83 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import InvestorForm from '@/components/InvestorForm';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import type { Investor, InvestorUpdateInput } from '@/types/database';
+
+export default function EditInvestorPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const [investor, setInvestor] = useState<Investor | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadInvestor();
+  }, [params.id]);
+
+  const loadInvestor = async () => {
+    try {
+      const response = await fetch(`/api/admin/investors/${params.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch investor');
+      }
+      const data = await response.json();
+      setInvestor(data);
+    } catch (error) {
+      console.error('Error loading investor:', error);
+      toast.error('Failed to load investor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (data: InvestorUpdateInput) => {
+    try {
+      const response = await fetch(`/api/admin/investors/${params.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update investor');
+      }
+
+      toast.success('Investor updated successfully');
+      router.push('/admin/investors');
+    } catch (error) {
+      console.error('Error updating investor:', error);
+      toast.error('Failed to update investor');
+    }
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (!investor) return <div>Investor not found</div>;
+
+  return (
+    <div className="container p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Edit Investor</h1>
+        <Button 
+          variant="outline"
+          onClick={() => router.push('/admin/investors')}
+        >
+          Back to List
+        </Button>
+      </div>
+
+      <InvestorForm 
+        investor={investor}
+        onSubmit={handleSubmit}
+        submitText="Save Changes"
+      />
+    </div>
+  );
+}

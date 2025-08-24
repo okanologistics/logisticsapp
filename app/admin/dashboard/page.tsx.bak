@@ -1,0 +1,430 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+import { Card } from '@/components/ui/card';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+import type { Investor, Payment } from '@/types/database';
+
+interface InvestmentStats {
+  totalInvestment: number;
+  totalInvestors: number;
+  activeInvestors: number;
+  totalBikes: number;
+  monthlyReturns: number;
+  totalReturns: number;
+}
+
+interface MonthlyData {
+  month: string;
+  investments: number;
+  returns: number;
+}
+
+interface MonthlyDataMap {
+  [key: string]: MonthlyData;
+}
+
+const SupabaseClient = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export default function InvestmentDashboard() {
+  const [stats, setStats] = useState<InvestmentStats>({
+    totalInvestment: 0,
+    totalInvestors: 0,
+    activeInvestors: 0,
+    totalBikes: 0,
+    monthlyReturns: 0,
+    totalReturns: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Functions
+  const [stats, setStats] = useState<InvestmentStats>({
+    totalInvestment: 0,
+    totalInvestors: 0,
+    activeInvestors: 0,
+    totalBikes: 0,
+    monthlyReturns: 0,
+    totalReturns: 0
+  });
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const processMonthlyData = useCallback((investors: Investor[], payments: Payment[]): MonthlyData[] => {
+    const monthlyDataMap: MonthlyDataMap = {};
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      return date.toISOString().slice(0, 7);
+    }).reverse();
+
+    // Initialize monthly data
+    last12Months.forEach(month => {
+      monthlyDataMap[month] = {
+        month: month,
+        investments: 0,
+        returns: 0
+      };
+    });
+
+    // Add investment data
+    investors.forEach((investor: Investor) => {
+      const month = investor.investment_date?.slice(0, 7);
+      if (month && monthlyDataMap[month]) {
+        monthlyDataMap[month].investments += investor.total_investment || 0;
+      }
+    });
+
+    // Add returns data
+    payments.forEach((payment: Payment) => {
+      const month = payment.payment_date?.slice(0, 7);
+      if (month && monthlyDataMap[month]) {
+        monthlyDataMap[month].returns += payment.amount || 0;
+      }
+    });
+
+    return Object.values(monthlyDataMap);
+  }, []);
+
+  const loadDashboardData = useCallback(async () => {
+    try {
+      // Load investors data
+      const { data: investors } = await supabase
+        .from('investors')
+        .select('*');
+
+      // Load payments data
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('status', 'completed');
+
+      if (investors) {
+        const activeInvestors = investors.filter((investor: Investor) => investor.status === 'active');
+        
+        setStats({
+          totalInvestment: investors.reduce((sum: number, investor: Investor) => sum + (investor.total_investment || 0), 0),
+          totalInvestors: investors.length,
+          activeInvestors: activeInvestors.length,
+          totalBikes: investors.reduce((sum: number, investor: Investor) => sum + (investor.number_of_bikes || 0), 0),
+          monthlyReturns: activeInvestors.reduce((sum: number, investor: Investor) => sum + (investor.monthly_return || 0), 0),
+          totalReturns: payments?.reduce((sum: number, payment: Payment) => sum + (payment.amount || 0), 0) || 0
+        });
+
+        // Process monthly data
+        const monthly = processMonthlyData(investors, payments || []);
+        setMonthlyData(monthly);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, processMonthlyData]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+      const last12Months = Array.from({ length: 12 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        return date.toISOString().slice(0, 7);
+      }).reverse();
+
+      // Initialize monthly data
+      last12Months.forEach(month => {
+        monthlyData[month] = {
+          month: month,
+          investments: 0,
+          returns: 0
+        };
+      });
+
+      // Add investment data
+      investors.forEach(investor => {
+        const month = investor.investment_date.slice(0, 7);
+        if (monthlyData[month]) {
+          monthlyData[month].investments += investor.total_investment;
+        }
+      });
+
+      // Add returns data
+      payments.forEach(payment => {
+        const month = payment.payment_date.slice(0, 7);
+        if (monthlyData[month]) {
+          monthlyData[month].returns += payment.amount;
+        }
+      });
+
+      return Object.values(monthlyData);
+    };
+
+    try {
+      // Load investors data
+      const { data: investors } = await supabase
+        .from('investors')
+        .select('*');
+
+      // Load payments data
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('status', 'completed');
+
+      if (investors) {
+        const activeInvestors = investors.filter(i => i.status === 'active');
+        
+        setStats({
+          totalInvestment: investors.reduce((sum, inv) => sum + inv.total_investment, 0),
+          totalInvestors: investors.length,
+          activeInvestors: activeInvestors.length,
+          totalBikes: investors.reduce((sum, inv) => sum + inv.number_of_bikes, 0),
+          monthlyReturns: activeInvestors.reduce((sum, inv) => sum + inv.monthly_return, 0),
+          totalReturns: payments?.reduce((sum, p) => sum + p.amount, 0) || 0
+        });
+
+        // Process monthly data
+        const monthly = processMonthlyData(investors, payments || []);
+        setMonthlyData(monthly);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+    const monthlyData: { [key: string]: MonthlyData } = {};
+    const last12Months = Array.from({ length: 12 }, (_, i) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      return date.toISOString().slice(0, 7);
+    }).reverse();
+
+    // Initialize monthly data
+    last12Months.forEach(month => {
+      monthlyData[month] = {
+        month: month,
+        investments: 0,
+        returns: 0
+      };
+    });
+
+    // Add investment data
+    investors.forEach(investor => {
+      const month = investor.investment_date.slice(0, 7);
+      if (monthlyData[month]) {
+        monthlyData[month].investments += investor.total_investment;
+      }
+    });
+
+    // Add returns data
+    payments.forEach(payment => {
+      const month = payment.payment_date.slice(0, 7);
+      if (monthlyData[month]) {
+        monthlyData[month].returns += payment.amount;
+      }
+    });
+
+    return Object.values(monthlyData);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto py-8">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+            <div className="h-32 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-6">Investment Dashboard</h1>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Total Investment</h3>
+          <p className="text-3xl font-bold text-orange-600">
+            ₦{stats.totalInvestment.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            {stats.totalBikes} Total Bikes
+          </p>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Monthly Returns</h3>
+          <p className="text-3xl font-bold text-green-600">
+            ₦{stats.monthlyReturns.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Total Returns: ₦{stats.totalReturns.toLocaleString()}
+          </p>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-2">Active Investors</h3>
+          <p className="text-3xl font-bold text-blue-600">
+            {stats.activeInvestors}
+          </p>
+          <p className="text-sm text-gray-500 mt-2">
+            Out of {stats.totalInvestors} Total Investors
+          </p>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Investment vs Returns</h3>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return date.toLocaleString('default', { month: 'short' });
+                  }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
+                />
+                <Tooltip 
+                  formatter={(value: number) => `₦${value.toLocaleString()}`}
+                  labelFormatter={(label) => {
+                    const date = new Date(label);
+                    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                  }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="investments"
+                  name="Investments"
+                  stroke="#f97316"
+                  strokeWidth={2}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="returns"
+                  name="Returns"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-lg font-semibold mb-4">Monthly Distribution</h3>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="month"
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return date.toLocaleString('default', { month: 'short' });
+                  }}
+                />
+                <YAxis 
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
+                />
+                <Tooltip
+                  formatter={(value: number) => `₦${value.toLocaleString()}`}
+                  labelFormatter={(label) => {
+                    const date = new Date(label);
+                    return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="investments" name="Investments" fill="#f97316" />
+                <Bar dataKey="returns" name="Returns" fill="#22c55e" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Investment Performance</h3>
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={monthlyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="month"
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => {
+                  const date = new Date(value);
+                  return date.toLocaleString('default', { month: 'short', year: 'numeric' });
+                }}
+              />
+              <YAxis 
+                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => `₦${(value / 1000000).toFixed(1)}M`}
+              />
+              <Tooltip
+                formatter={(value: number) => `₦${value.toLocaleString()}`}
+                labelFormatter={(label) => {
+                  const date = new Date(label);
+                  return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+                }}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="investments"
+                name="Investments"
+                stroke="#f97316"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="returns"
+                name="Returns"
+                stroke="#22c55e"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+    </div>
+  );
+}

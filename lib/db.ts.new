@@ -1,0 +1,205 @@
+import mysql from 'mysql2/promise';
+
+// Types
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  password?: string;
+  name?: string;
+}
+
+interface Investor {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  phone_number: string;
+  total_investment: number;
+  number_of_bikes: number;
+  monthly_return: number;
+  total_return: number;
+  interest_earned: number;
+  investment_date: string;
+  maturity_date: string;
+  next_payout_date: string;
+  last_payout_date?: string;
+  status: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Database configuration
+const dbConfig = {
+  host: process.env.MYSQL_HOST || 'localhost',
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || '',
+  database: process.env.MYSQL_DATABASE || 'okanodb'
+};
+
+// Create connection pool
+const pool = mysql.createPool({
+  ...dbConfig,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  multipleStatements: true,
+  dateStrings: true
+});
+
+// Database functions
+async function checkDatabaseConnection(): Promise<boolean> {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.execute('SELECT 1');
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('Database connection check failed:', error);
+    return false;
+  }
+}
+
+async function initializeDatabase(): Promise<boolean> {
+  try {
+    const connection = await pool.getConnection();
+    console.log('Checking database tables...');
+
+    const [tables] = await connection.execute(
+      'SELECT table_name FROM information_schema.tables WHERE table_schema = ?',
+      [dbConfig.database]
+    );
+
+    if (!Array.isArray(tables) || tables.length === 0) {
+      console.log('Database tables not found. Creating schema...');
+      await connection.execute(`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(36) PRIMARY KEY,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          email VARCHAR(255) NOT NULL UNIQUE,
+          password VARCHAR(255) NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS profiles (
+          id VARCHAR(36) PRIMARY KEY,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          user_id VARCHAR(36) NOT NULL,
+          role ENUM('admin', 'investor') DEFAULT 'investor',
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS investors (
+          id VARCHAR(36) PRIMARY KEY,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          user_id VARCHAR(36) NOT NULL,
+          full_name VARCHAR(255) NOT NULL,
+          email VARCHAR(255) NOT NULL,
+          phone_number VARCHAR(20),
+          total_investment DECIMAL(15, 2) NOT NULL DEFAULT 0,
+          number_of_bikes INT NOT NULL DEFAULT 0,
+          monthly_return DECIMAL(15, 2) NOT NULL DEFAULT 0,
+          total_return DECIMAL(15, 2) NOT NULL DEFAULT 0,
+          interest_earned DECIMAL(15, 2) NOT NULL DEFAULT 0,
+          investment_date DATE NOT NULL,
+          maturity_date DATE NOT NULL,
+          next_payout_date DATE NOT NULL,
+          last_payout_date DATE NULL,
+          status ENUM('active', 'inactive') DEFAULT 'active',
+          notes TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+      `);
+      console.log('Database schema created successfully');
+    }
+
+    connection.release();
+    return true;
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    throw error;
+  }
+}
+
+// Database interface type
+interface DatabaseInterface {
+  pool: mysql.Pool;
+  initializeDatabase(): Promise<boolean>;
+  checkDatabaseConnection(): Promise<boolean>;
+  findUserById(id: string): Promise<User | null>;
+  findUserByEmail(email: string): Promise<User | null>;
+  createUser(data: { email: string; password: string; role: string; name?: string }): Promise<mysql.ResultSetHeader>;
+  getInvestors(): Promise<Investor[]>;
+  createProfile(userId: string, role?: string): Promise<mysql.ResultSetHeader>;
+}
+
+// Export database interface implementation
+export const db: DatabaseInterface = {
+  pool,
+  initializeDatabase,
+  checkDatabaseConnection,
+
+  async findUserById(id: string) {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      'SELECT id, email, role FROM users WHERE id = ?',
+      [id]
+    );
+    return rows[0] as User || null;
+  },
+
+  async findUserByEmail(email: string) {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT u.id, u.email, u.password, COALESCE(p.role, 'investor') as role 
+       FROM users u 
+       LEFT JOIN profiles p ON u.id = p.user_id 
+       WHERE u.email = ?`,
+      [email]
+    );
+    return rows[0] as User || null;
+  },
+
+  async createUser(data) {
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      'INSERT INTO users (id, email, password, role, name) VALUES (UUID(), ?, ?, ?, ?)',
+      [data.email, data.password, data.role, data.name]
+    );
+    return result;
+  },
+
+  async getInvestors() {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT i.*, u.email 
+       FROM investors i 
+       JOIN users u ON i.user_id = u.id 
+       ORDER BY i.created_at DESC`
+    );
+    return rows as Investor[];
+  },
+
+  async createProfile(userId: string, role: string = 'investor') {
+    const [result] = await pool.execute<mysql.ResultSetHeader>(
+      'INSERT INTO profiles (id, user_id, role) VALUES (UUID(), ?, ?)',
+      [userId, role]
+    );
+    return result;
+  }
+};
+
+// Test the connection initially
+pool.getConnection()
+  .then(connection => {
+    console.log('Database connection successful');
+    connection.release();
+  })
+  .catch(error => {
+    console.error('Database connection failed:', error);
+    process.exit(1);
+  });
+
+// Export types for use in other files
+export type { User, Investor };

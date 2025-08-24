@@ -1,0 +1,412 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
+import {
+  LayoutDashboard,
+  Settings,
+  LogOut,
+  Mail,
+  Phone,
+  Instagram,
+  Calendar,
+  User,
+  Camera,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert } from '@/components/ui/alert';
+import { toast } from 'sonner';
+
+export default function InvestorDashboard() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showContact, setShowContact] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [investor, setInvestor] = useState<any>(null);
+  const [notifications, setNotifications] = useState([]);
+
+  // Create a Supabase client for the browser
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  // Fetch investor data
+  useEffect(() => {
+    async function loadInvestorData() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+
+        // Get investor profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        // Get investor details
+        const { data: investorData, error: investorError } = await supabase
+          .from('investors')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (investorError) throw investorError;
+
+        setInvestor({
+          ...investorData,
+          ...profile,
+          avatar_url: profile.avatar_url || '/placeholder-avatar.jpg',
+          email: profile.email?.replace(/(.{2})(.*)(?=@)/, (_, a, b) => a + '*'.repeat(b.length)),
+          phone: profile.phone?.replace(/(\d{3})\d{6}(\d{4})/, '$1******$2'),
+          emailFull: profile.email,
+          phoneFull: profile.phone
+        });
+        
+        // Get recent activities
+        const { data: activities } = await supabase
+          .from('activities')
+          .select('*')
+          .eq('investor_id', investorData.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        setNotifications(activities || []);
+      } catch (error: any) {
+        console.error('Error loading investor data:', error);
+        setError(error.message || 'Failed to load investor data');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadInvestorData();
+  }, [router, supabase]);
+
+  const handleProfilePictureChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !investor) return;
+
+    try {
+      setIsLoading(true);
+      
+      // Upload the file to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${investor.id}-avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update the profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', investor.id);
+
+      if (updateError) throw updateError;
+
+      setInvestor({ ...investor, avatar_url: publicUrl });
+      toast.success('Profile picture updated successfully');
+    } catch (error: any) {
+      console.error('Error updating profile picture:', error);
+      toast.error(error.message || 'Failed to update profile picture');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      toast.error(error.message || 'Failed to sign out');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-t-orange border-gray-200 border-solid rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto p-6">
+          <Alert variant="destructive" className="mb-4">
+            {error}
+          </Alert>
+          <Button 
+            className="w-full" 
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!investor) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">No investor data found</p>
+          <Button 
+            onClick={() => router.push('/login')}
+          >
+            Return to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="w-16 bg-white border-r border-gray-200 flex flex-col items-center py-4 space-y-8">
+        <div className="tooltip" data-tip="Dashboard">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setActiveTab('dashboard')}
+            className={activeTab === 'dashboard' ? 'text-orange' : ''}
+          >
+            <LayoutDashboard className="h-5 w-5" />
+          </Button>
+        </div>
+        <div className="tooltip" data-tip="Settings">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setActiveTab('settings')}
+            className={activeTab === 'settings' ? 'text-orange' : ''}
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
+        <div className="tooltip" data-tip="Logout">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8">
+        {/* Header */}
+        <header className="bg-white rounded-lg shadow p-6 mb-8 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full overflow-hidden">
+                <img
+                  src={investor.avatar_url}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <label className="absolute bottom-0 right-0 p-1 bg-orange rounded-full cursor-pointer">
+                <Camera className="h-4 w-4 text-white" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleProfilePictureChange}
+                />
+              </label>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{investor.full_name}</h1>
+              <p className="text-sm text-gray-500">ID: {investor.id}</p>
+            </div>
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">Contact Info</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Email:</span>
+                  <span>{showContact ? investor.emailFull : investor.email}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Phone:</span>
+                  <span>{showContact ? investor.phoneFull : investor.phone}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowContact(!showContact)}
+                >
+                  {showContact ? (
+                    <EyeOff className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Eye className="h-4 w-4 mr-2" />
+                  )}
+                  {showContact ? 'Hide' : 'Show'} Details
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </header>
+
+        {/* Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsContent value="dashboard">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Investment Summary */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold mb-4">Investment Summary</h2>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total Investment</span>
+                    <span className="font-semibold">₦{investor.total_investment?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Monthly Return</span>
+                    <span className="font-semibold text-green-600">₦{investor.monthly_return?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Next Payout Date</span>
+                    <span className="font-semibold">{new Date(investor.next_payout_date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Number of Bikes</span>
+                    <span className="font-semibold">{investor.number_of_bikes}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+                <div className="space-y-4">
+                  {notifications.length === 0 ? (
+                    <p className="text-gray-500 text-center py-4">No recent activity</p>
+                  ) : (
+                    notifications.map((notification: any) => (
+                      <div
+                        key={notification.id}
+                        className="flex items-start space-x-3 border-b border-gray-100 pb-4"
+                      >
+                        <Calendar className="h-5 w-5 text-orange flex-shrink-0" />
+                        <div>
+                          <p className="text-gray-600">{notification.description}</p>
+                          <p className="text-sm text-gray-400">
+                            {new Date(notification.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-6">Profile Settings</h2>
+              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input id="name" defaultValue={investor.full_name} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" defaultValue={investor.emailFull} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input id="phone" defaultValue={investor.phoneFull} />
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-lg font-medium mb-4">Change Password</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <Input id="current-password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input id="new-password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <Input id="confirm-password" type="password" />
+                    </div>
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full md:w-auto">
+                  Save Changes
+                </Button>
+              </form>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Footer */}
+        <footer className="mt-8 text-center text-sm text-gray-500">
+          <p>© 2025 Investor Portal. All rights reserved.</p>
+          <div className="flex justify-center space-x-4 mt-2">
+            <Link href="/terms" className="hover:text-orange">Terms of Use</Link>
+            <Link href="/privacy" className="hover:text-orange">Privacy Policy</Link>
+          </div>
+        </footer>
+      </main>
+    </div>
+  );
+}

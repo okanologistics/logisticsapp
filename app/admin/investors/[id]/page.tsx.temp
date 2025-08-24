@@ -1,0 +1,8 @@
+export default function InvestorDetailsPage() {
+  return (
+    <div className="p-4">
+      <h1>Investor Details</h1>
+      <p>This page is temporarily disabled for build purposes.</p>
+    </div>
+  );
+}
