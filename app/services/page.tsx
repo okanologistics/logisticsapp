@@ -51,7 +51,10 @@ export default function Services() {
         "Business meetings",
         "Optional security escort service",
         "24/7 availability"
-      ]
+      ],
+      image: "/carhire.jpg",
+      pricing: "From ₦15,000",
+      duration: "Flexible"
     },
     {
       icon: Truck,
