@@ -33,8 +33,8 @@ export default function Home() {
     },
     {
       icon: Car,
-      title: "Private Car Service",
-      description: "Comfortable, professional transportation services for all your needs.",
+      title: "Private Car Services",
+      description: "Comfortable, professional transportation services for all your needs. Optional security escort service available upon request.",
       image: "/carhiresuv.jpg"
     },
     {
@@ -51,9 +51,9 @@ export default function Home() {
     },
     {
       icon: TrendingUp,
-      title: "Car Hire",
-      description: "Hire a car for your business or personal needs.",
-      image: "/carhire.jpg"
+      title: "Flight Ticket Booking",
+      description: "Book flights for your business or personal needs with ease.",
+      image: "/flight-ticket.jpeg"
     }
   ];
 

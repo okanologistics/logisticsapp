@@ -72,7 +72,7 @@ export function Footer() {
             <h3 className="text-lg font-semibold font-poppins">Services</h3>
             <ul className="space-y-2">
               <li><span className="text-gray-300">Express Delivery</span></li>
-              <li><span className="text-gray-300">Private Car Service</span></li>
+              <li><span className="text-gray-300">Private Car Services</span></li>
               <li><span className="text-gray-300">Haulage Services</span></li>
               <li><span className="text-gray-300">Bike Investment</span></li>
             </ul>

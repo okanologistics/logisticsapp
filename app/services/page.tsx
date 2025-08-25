@@ -41,13 +41,14 @@ export default function Services() {
     },
     {
       icon: Car,
-      title: "Private Car Service",
-      description: "Comfortable and professional transportation for business and personal needs.",
+      title: "Private Car Services",
+      description: "Comfortable and professional transportation for business and personal needs. Optional security escort service available upon request.",
       features: [
         "Professional drivers",
         "Clean and comfortable vehicles",
         "Airport transfers",
         "Corporate transportation",
+        "Optional security escort service",
         "Hourly or daily rates"
       ],
       image: "/carhiresuv.jpg",

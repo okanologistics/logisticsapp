@@ -75,7 +75,7 @@ export default function About() {
       image: "/okoliko.jpg"
     },
     {
-      name: "Ohaegbulemchiemerie Juliet",
+      name: "Juliet Uwa Edegbe",
       role: "Human Resource Manager",
       description: "Experienced HR professional dedicated to fostering positive workplace culture, talent development, and organizational growth.",
       image: "/hr.jpg"

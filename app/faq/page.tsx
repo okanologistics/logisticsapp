@@ -69,7 +69,7 @@ export default function FAQ() {
       questions: [
         {
           question: "How are delivery charges calculated?",
-          answer: "Delivery charges are calculated based on distance, package size/weight, delivery speed, and destination. Our express delivery starts from ₦1,500 within the city, private car service from ₦15,000, and haulage services from ₦150,000. You can get an instant quote through our website or by calling our customer service."
+          answer: "Delivery charges are calculated based on distance, package size/weight, delivery speed, and destination. Our express delivery starts from ₦1,500 within the city, private car services from ₦15,000 (with optional security escort service available), and haulage services from ₦150,000. You can get an instant quote through our website or by calling our customer service."
         },
         {
           question: "What payment methods do you accept?",
