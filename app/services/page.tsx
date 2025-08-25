@@ -41,19 +41,17 @@ export default function Services() {
     },
     {
       icon: Car,
-      title: "Private Car Services",
+      title: "Private Car Services with Optional Security Escort",
       description: "Comfortable and professional transportation for business and personal needs. Optional security escort service available upon request.",
       features: [
         "Professional drivers",
-        "Clean and comfortable vehicles",
+        "Clean, well-maintained vehicles",
+        "Flexible scheduling",
         "Airport transfers",
-        "Corporate transportation",
+        "Business meetings",
         "Optional security escort service",
-        "Hourly or daily rates"
-      ],
-      image: "/carhiresuv.jpg",
-      pricing: "From ₦",
-      duration: "Flexible"
+        "24/7 availability"
+      ]
     },
     {
       icon: Truck,

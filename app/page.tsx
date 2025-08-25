@@ -33,9 +33,9 @@ export default function Home() {
     },
     {
       icon: Car,
-      title: "Private Car Services",
+      title: "Private Car Services with Optional Security Escort",
       description: "Comfortable, professional transportation services for all your needs. Optional security escort service available upon request.",
-      image: "/carhiresuv.jpg"
+      link: "/services"
     },
     {
       icon: Truck,
