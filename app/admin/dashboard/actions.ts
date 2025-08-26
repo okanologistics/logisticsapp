@@ -540,31 +540,47 @@ export async function addPaymentRecord(userId: string, data: {
     // Look up the investor ID from the investors table using the user ID
     console.log('🔍 Looking up investor ID for user:', userId);
     const [investorResult] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM investors WHERE user_id = ?',
+      'SELECT id, user_id FROM investors WHERE user_id = ?',
       [userId]
     );
     
     if (!investorResult.length) {
       console.log('❌ No investor found for user ID:', userId);
+      
+      // Debug: Check if the user exists at all
+      const [userCheck] = await pool.query<RowDataPacket[]>(
+        'SELECT id, email FROM users WHERE id = ?',
+        [userId]
+      );
+      console.log('👤 User check result:', userCheck.length > 0 ? userCheck[0] : 'User not found');
+      
+      // Debug: Check what investors exist
+      const [allInvestors] = await pool.query<RowDataPacket[]>(
+        'SELECT id, user_id, email FROM investors LIMIT 5'
+      );
+      console.log('📊 Sample investors in database:', allInvestors);
+      
       throw new Error(`No investor found for user ID: ${userId}`);
     }
     
     const investorId = investorResult[0].id;
-    console.log('✅ Found investor ID:', investorId);
+    console.log('✅ Found investor ID:', investorId, 'for user ID:', investorResult[0].user_id);
     
     // Check for existing payment on the same date
     const [existingPayments] = await pool.query<RowDataPacket[]>(
-      'SELECT id FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
+      'SELECT id, DATE_FORMAT(payment_date, "%Y-%m-%d") as formatted_date FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
       [investorId, paymentDate]
     );
     
     if (existingPayments.length > 0) {
       console.log('⚠️ Payment already exists for this date:', paymentDate);
-      return { 
-        success: false, 
-        id: '', 
-        message: `Payment already exists for ${paymentDate}` 
-      } as any;
+      
+      // Calculate tomorrow's date as suggestion
+      const tomorrow = new Date(paymentDate);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const suggestedDate = tomorrow.toISOString().split('T')[0];
+      
+      throw new Error(`Payment already exists for ${paymentDate}. Try using ${suggestedDate} or choose a different date.`);
     }
     
     const paymentId = uuidv4();

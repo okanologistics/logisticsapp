@@ -196,9 +196,17 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
       });
       loadPaymentHistory();
       onUpdate?.();
-    } catch (error) {
-      toast.error('Failed to record payment');
+    } catch (error: any) {
       console.error('Error adding payment:', error);
+      
+      // Handle specific error messages
+      if (error.message.includes('Payment already exists')) {
+        toast.error(error.message);
+      } else if (error.message.includes('No investor found')) {
+        toast.error('Investor record not found. Please contact support.');
+      } else {
+        toast.error('Failed to record payment. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

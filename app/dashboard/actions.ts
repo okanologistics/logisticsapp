@@ -226,7 +226,18 @@ export const getInvestorData = async (): Promise<DashboardData> => {
     
     const totalPayouts = dashboardPayments
       .filter((p: Payment) => p.status === 'completed')
-      .reduce((sum: number, p: Payment) => sum + Number(p.amount), 0);
+      .reduce((sum: number, p: Payment) => sum + Number(p.total_amount || p.amount || 0), 0);
+
+    console.log('Payment calculation details:', {
+      totalPayments: dashboardPayments.length,
+      completedPayments: dashboardPayments.filter(p => p.status === 'completed').length,
+      calculatedTotalPayouts: totalPayouts,
+      samplePayment: dashboardPayments[0] ? {
+        amount: dashboardPayments[0].amount,
+        total_amount: dashboardPayments[0].total_amount,
+        status: dashboardPayments[0].status
+      } : 'No payments found'
+    });
 
     // Use actual investment values from database
     const totalInvestment = investor.total_investment || 0;
