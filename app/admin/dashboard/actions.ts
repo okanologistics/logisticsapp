@@ -527,6 +527,7 @@ export async function addPaymentRecord(userId: string, data: {
   payment_date?: string;
   status?: 'pending' | 'completed' | 'failed';
   notes?: string;
+  allow_duplicate?: boolean;
 }): Promise<{ success: boolean; id: string }> {
   await checkAdminAuth();
 
@@ -566,21 +567,25 @@ export async function addPaymentRecord(userId: string, data: {
     const investorId = investorResult[0].id;
     console.log('✅ Found investor ID:', investorId, 'for user ID:', investorResult[0].user_id);
     
-    // Check for existing payment on the same date
-    const [existingPayments] = await pool.query<RowDataPacket[]>(
-      'SELECT id, DATE_FORMAT(payment_date, "%Y-%m-%d") as formatted_date FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
-      [investorId, paymentDate]
-    );
-    
-    if (existingPayments.length > 0) {
-      console.log('⚠️ Payment already exists for this date:', paymentDate);
+    // Check for existing payment on the same date (unless override is enabled)
+    if (!data.allow_duplicate) {
+      const [existingPayments] = await pool.query<RowDataPacket[]>(
+        'SELECT id, DATE_FORMAT(payment_date, "%Y-%m-%d") as formatted_date FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
+        [investorId, paymentDate]
+      );
       
-      // Calculate tomorrow's date as suggestion
-      const tomorrow = new Date(paymentDate);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const suggestedDate = tomorrow.toISOString().split('T')[0];
-      
-      throw new Error(`Payment already exists for ${paymentDate}. Try using ${suggestedDate} or choose a different date.`);
+      if (existingPayments.length > 0) {
+        console.log('⚠️ Payment already exists for this date:', paymentDate);
+        
+        // Calculate tomorrow's date as suggestion
+        const tomorrow = new Date(paymentDate);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const suggestedDate = tomorrow.toISOString().split('T')[0];
+        
+        throw new Error(`Payment already exists for ${paymentDate}. Try using ${suggestedDate} or enable "Allow Duplicate" to override.`);
+      }
+    } else {
+      console.log('🔓 Duplicate check bypassed by admin override');
     }
     
     const paymentId = uuidv4();
@@ -624,6 +629,14 @@ export async function addPaymentRecord(userId: string, data: {
     return { success: true, id: paymentId };
   } catch (error) {
     console.error('Error adding payment record:', error);
+    
+    // Preserve specific error messages (especially for duplicates)
+    if (error instanceof Error) {
+      // Re-throw the original error to preserve specific messages like duplicate warnings
+      throw error;
+    }
+    
+    // Only use generic message for unknown errors
     throw new Error('Failed to add payment record');
   }
 }

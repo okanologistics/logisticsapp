@@ -68,25 +68,41 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
     custom_interest_amount: 0,
     custom_principal_amount: 0,
     use_custom_amounts: false, // Toggle between auto-calculated and custom amounts
+    allow_duplicate: false, // Allow overriding duplicate protection
   });
 
   // Calculate payment breakdown based on frequency
   const calculatePaymentBreakdown = (frequency: 'weekly' | 'monthly') => {
     const totalInvestment = investor.total_investment || 0;
-    const totalProfit = totalInvestment * 0.25; // 25% profit over the investment period
     
+    // Validate investment amount
+    if (totalInvestment <= 0) {
+      return {
+        interestAmount: 0,
+        principalAmount: 0,
+        totalAmount: 0,
+        frequency
+      };
+    }
+    
+    const totalProfit = totalInvestment * 0.25; // 25% profit over the investment period
     const periods = frequency === 'weekly' ? 52 : 12; // 52 weeks or 12 months
     
-    // Calculate per-period amounts
+    // Calculate per-period amounts with proper rounding
     const interestPerPeriod = Math.round((totalProfit / periods) * 100) / 100;
     const principalPerPeriod = Math.round((totalInvestment / periods) * 100) / 100;
-    const totalPerPeriod = interestPerPeriod + principalPerPeriod;
+    const totalPerPeriod = Math.round((interestPerPeriod + principalPerPeriod) * 100) / 100;
     
     return {
       interestAmount: interestPerPeriod,
       principalAmount: principalPerPeriod,
       totalAmount: totalPerPeriod,
-      frequency
+      frequency,
+      // Additional info for transparency
+      totalInvestment,
+      totalProfit,
+      periods,
+      expectedTotalPayout: Math.round((totalInvestment + totalProfit) * 100) / 100
     };
   };
 
@@ -180,6 +196,7 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
         payment_date: paymentData.payment_date,
         status: paymentData.status,
         notes: paymentData.notes,
+        allow_duplicate: paymentData.allow_duplicate,
       });
       
       toast.success('Payment recorded and notifications sent successfully');
@@ -639,6 +656,31 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
                     })}
                     rows={3}
                   />
+                </div>
+                
+                {/* Duplicate Override Checkbox */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="allow_duplicate"
+                      checked={paymentData.allow_duplicate}
+                      onChange={(e) => setPaymentData({
+                        ...paymentData,
+                        allow_duplicate: e.target.checked
+                      })}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="allow_duplicate" className="text-sm font-medium">
+                      Allow duplicate payment on same date
+                    </Label>
+                  </div>
+                  {paymentData.allow_duplicate && (
+                    <div className="text-sm text-orange-600 bg-orange-50 border border-orange-200 p-2 rounded flex items-center space-x-2">
+                      <span>⚠️</span>
+                      <span>Warning: This will allow adding multiple payments for the same date</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                   <Button
