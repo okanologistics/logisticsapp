@@ -1,13 +1,33 @@
 import nodemailer from 'nodemailer';
 
+// Create transporter with optimized settings
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
-  secure: true,
+  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for 587
+  requireTLS: Number(process.env.SMTP_PORT) === 587, // true for 587
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   },
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 5000,    // 5 seconds
+  socketTimeout: 15000,     // 15 seconds
+  pool: true,               // Use connection pooling
+  maxConnections: 5,        // Limit concurrent connections
+  maxMessages: 100,         // Limit messages per connection
+  tls: {
+    rejectUnauthorized: false // Allow self-signed certificates
+  }
+});
+
+// Test the connection on startup (but don't fail if it doesn't work)
+transporter.verify((error: any, success: any) => {
+  if (error) {
+    console.warn('⚠️ Email transporter verification failed:', error.message);
+  } else {
+    console.log('✅ Email transporter verified successfully');
+  }
 });
 
 export interface PaymentEmailData {
@@ -27,18 +47,51 @@ export async function sendEmail({
   subject: string;
   html: string;
 }) {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to,
-      subject,
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error('Email send error:', error);
-    return { success: false, error };
+  const maxRetries = 3;
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📧 Sending email (attempt ${attempt}/${maxRetries}) to: ${to}`);
+      
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM,
+        to,
+        subject,
+        html,
+      });
+      
+      console.log('✅ Email sent successfully:', info.messageId);
+      return { success: true, messageId: info.messageId };
+      
+    } catch (error: any) {
+      console.error(`❌ Email attempt ${attempt} failed:`, {
+        code: error.code,
+        command: error.command,
+        message: error.message
+      });
+      
+      lastError = error;
+      
+      // If it's a connection timeout or connection refused, wait before retrying
+      if (attempt < maxRetries && (
+        error.code === 'ETIMEDOUT' || 
+        error.code === 'ECONNREFUSED' || 
+        error.code === 'ENOTFOUND'
+      )) {
+        const delay = attempt * 2000; // 2s, 4s, 6s delays
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // For other errors or final attempt, break the loop
+      break;
+    }
   }
+  
+  console.error('💥 Email sending failed after all attempts:', lastError);
+  return { success: false, error: lastError };
 }
 
 export function generateVerificationEmail(token: string) {
@@ -65,6 +118,8 @@ export async function sendPaymentNotificationEmail(
   paymentData: PaymentEmailData
 ): Promise<boolean> {
   try {
+    console.log('📧 Preparing payment notification email for:', recipientEmail);
+    
     const html = `
       <!DOCTYPE html>
       <html>
@@ -145,16 +200,22 @@ export async function sendPaymentNotificationEmail(
       </html>
     `;
 
-    await sendEmail({
+    const result = await sendEmail({
       to: recipientEmail,
       subject: 'Investment Payout Notification - Okano Logistics',
       html: html
     });
 
-    console.log('Payment notification email sent successfully to:', recipientEmail);
-    return true;
+    if (result.success) {
+      console.log('✅ Payment notification email sent successfully to:', recipientEmail);
+      return true;
+    } else {
+      console.error('❌ Failed to send payment notification email:', result.error);
+      return false;
+    }
+    
   } catch (error) {
-    console.error('Error sending payment notification email:', error);
+    console.error('💥 Error in sendPaymentNotificationEmail:', error);
     return false;
   }
 }

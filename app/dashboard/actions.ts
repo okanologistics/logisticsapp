@@ -1,17 +1,8 @@
 'use server';
 
 import { checkInvestorAuth } from '@/lib/auth';
+import { pool } from '@/lib/db';
 import mysql from 'mysql2/promise';
-
-// Database connection function
-const getConnection = async () => {
-  return await mysql.createConnection({
-    host: process.env.MYSQL_HOST || 'localhost',
-    user: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || 'okanodb'
-  });
-};
 
 // Interfaces
 interface InvestorData {
@@ -97,7 +88,7 @@ export const updateInvestorProfile = async (data: {
 
   console.log('Updating profile with data:', data);
 
-  const connection = await getConnection();
+  const connection = await pool.getConnection();
   try {
     // First get the user's ID
     const [userRows] = await connection.execute<mysql.RowDataPacket[]>(
@@ -144,7 +135,7 @@ export const updateInvestorProfile = async (data: {
     console.error('Error updating investor profile:', error);
     throw new Error('Failed to update profile');
   } finally {
-    await connection.end();
+    connection.release();
   }
 };
 
@@ -161,7 +152,7 @@ export const getInvestorData = async (): Promise<DashboardData> => {
 
     console.log('Session found for user:', session.user.email);
 
-    const connection = await getConnection();
+    const connection = await pool.getConnection();
 
     try {
       // First get user and profile data with investment details
@@ -223,7 +214,7 @@ export const getInvestorData = async (): Promise<DashboardData> => {
       
       if (tableCheck.length > 0) {
         const [notificationRows] = await connection.execute<mysql.RowDataPacket[]>(
-          'SELECT id, investor_id as user_id, message, DATE_FORMAT(created_at, "%Y-%m-%d %H:%i:%s") as created_at, read FROM notifications WHERE investor_id = ? ORDER BY created_at DESC',
+          'SELECT id, investor_id as user_id, message, DATE_FORMAT(created_at, "%Y-%m-%d %H:%i:%s") as created_at, `read` FROM notifications WHERE investor_id = ? ORDER BY created_at DESC',
           [investor.id]
         );
         dashboardNotifications = notificationRows as Notification[];
@@ -291,7 +282,7 @@ export const getInvestorData = async (): Promise<DashboardData> => {
       console.log('Data formatting complete');
       return formattedData;
     } finally {
-      await connection.end();
+      connection.release();
     }
   } catch (error) {
     console.error('Error in getInvestorData:', error);
