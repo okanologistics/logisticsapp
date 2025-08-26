@@ -7,12 +7,20 @@ async function setupDatabase() {
     const dbConfig = {
       host: process.env.MYSQL_HOST || "localhost",
       user: process.env.MYSQL_USER || "root", 
-      password: process.env.MYSQL_PASSWORD || "",
+      password: process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || "",
       database: process.env.MYSQL_DATABASE || "okanodb",
+      port: parseInt(process.env.MYSQL_PORT || "3306"),
+      connectTimeout: 60000,
+      acquireTimeout: 60000,
       multipleStatements: true
     };
 
     console.log('🔄 Connecting to database...');
+    console.log('Host:', dbConfig.host);
+    console.log('Port:', dbConfig.port);
+    console.log('Database:', dbConfig.database);
+    console.log('User:', dbConfig.user);
+    
     const connection = await mysql.createConnection(dbConfig);
     
     console.log('✅ Connected! Setting up database schema...');

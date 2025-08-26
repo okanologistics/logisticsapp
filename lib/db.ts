@@ -41,11 +41,11 @@ interface Investor {
 
 // Database configuration
 const dbConfig = {
-  host: process.env.MYSQL_HOST || "localhost",
+  host: process.env.MYSQL_HOST || "20.224.239.134",
   user: process.env.MYSQL_USER || "root", 
-  password: process.env.MYSQL_PASSWORD || "",
+  password: process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || "okanologistics@123!",
   database: process.env.MYSQL_DATABASE || "okanodb",
-  port: parseInt(process.env.MYSQL_PORT || "3306"),
+  port: parseInt(process.env.MYSQL_PORT || "8082"),
   ssl: process.env.NODE_ENV === 'production' && process.env.MYSQL_HOST !== 'localhost' ? { rejectUnauthorized: false } : undefined,
   connectTimeout: 60000,
   multipleStatements: true
