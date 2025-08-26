@@ -49,6 +49,7 @@ import {
   Eye, Search, RefreshCcw, CheckCircle, XCircle, Trash2, LogOut
 } from 'lucide-react';
 import { CreateInvestorForm } from '@/components/CreateInvestorForm';
+import { CreateAdminForm } from '@/components/CreateAdminForm';
 import InvestorForm from '@/components/InvestorForm';
 import { InvestorDetails } from '@/components/InvestorDetails';
 import { 
@@ -58,6 +59,10 @@ import {
   updateInvestor, 
   deleteInvestor, 
   getInvestorPayments,
+  createAdminAccount,
+  getAdminUsers,
+  promoteInvestorToAdmin,
+  demoteAdminToInvestor,
   type DashboardStats, 
   type InvestorDetails as InvestorDetailsType 
 } from './actions';
@@ -80,10 +85,14 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showCreateAdminDialog, setShowCreateAdminDialog] = useState(false);
+  const [showAdminListDialog, setShowAdminListDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [investorToDelete, setInvestorToDelete] = useState<InvestorDetailsType | null>(null);
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -103,6 +112,15 @@ export default function AdminDashboard() {
         throw new Error('Admin access required');
       }
       setIsAdmin(true);
+      
+      // Get current user session
+      const sessionResponse = await fetch('/api/auth/check-session');
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json();
+        if (sessionData.user?.id) {
+          setCurrentUserId(sessionData.user.id);
+        }
+      }
       
       // Load dashboard data
       const { stats: dashboardStats, investors: investorList } = await getDashboardData();
@@ -190,6 +208,52 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Edit failed:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update investor');
+    }
+  }
+
+  async function handleCreateAdmin(data: { email: string; password: string; full_name: string; phone_number?: string }) {
+    try {
+      await createAdminAccount(data);
+      toast.success('Admin account created successfully');
+      setShowCreateAdminDialog(false);
+      loadAdminUsers(); // Refresh admin list if open
+    } catch (error) {
+      console.error('Error creating admin:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create admin account');
+    }
+  }
+
+  async function loadAdminUsers() {
+    try {
+      const admins = await getAdminUsers();
+      setAdminUsers(admins);
+    } catch (error) {
+      console.error('Error loading admin users:', error);
+      toast.error('Failed to load admin users');
+    }
+  }
+
+  async function handlePromoteToAdmin(investorUserId: string, investorName: string) {
+    try {
+      await promoteInvestorToAdmin(investorUserId);
+      toast.success(`${investorName} has been promoted to admin`);
+      loadDashboardData(); // Refresh the investor list
+      loadAdminUsers(); // Refresh admin list if open
+    } catch (error) {
+      console.error('Error promoting to admin:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to promote to admin');
+    }
+  }
+
+  async function handleDemoteToInvestor(adminUserId: string, adminName: string) {
+    try {
+      await demoteAdminToInvestor(adminUserId, currentUserId);
+      toast.success(`${adminName} has been demoted to investor`);
+      loadDashboardData(); // Refresh the investor list
+      loadAdminUsers(); // Refresh admin list
+    } catch (error) {
+      console.error('Error demoting to investor:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to demote to investor');
     }
   }
 
@@ -341,13 +405,28 @@ export default function AdminDashboard() {
             </SelectContent>
           </Select>
         </div>
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out w-full sm:w-auto">
-              <UserPlus className="mr-2 h-4 w-4" /> 
-              <span className="sm:inline">Add Investor</span>
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          {/* Admin Management Button */}
+          <Button 
+            variant="outline"
+            onClick={() => {
+              loadAdminUsers();
+              setShowAdminListDialog(true);
+            }}
+            className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 w-full sm:w-auto"
+          >
+            <Users className="mr-2 h-4 w-4" />
+            <span className="sm:inline">Manage Admins</span>
+          </Button>
+          
+          {/* Add Investor Button */}
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out w-full sm:w-auto">
+                <UserPlus className="mr-2 h-4 w-4" /> 
+                <span className="sm:inline">Add Investor</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent className="w-[95vw] max-w-[700px] max-h-[90vh] overflow-hidden bg-gradient-to-br from-white to-gray-50/50 border-0 shadow-2xl backdrop-blur-sm mx-2">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-navy-600/5 pointer-events-none" />
             <DialogHeader className="relative z-10 pb-4 md:pb-6 border-b border-gray-200/60">
@@ -369,7 +448,84 @@ export default function AdminDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Admin Management Dialog */}
+      <Dialog open={showAdminListDialog} onOpenChange={setShowAdminListDialog}>
+        <DialogContent className="w-[95vw] max-w-[800px] max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Admin Management
+            </DialogTitle>
+            <DialogDescription>
+              Manage admin users and create new admin accounts
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Admin Users</h3>
+              <Dialog open={showCreateAdminDialog} onOpenChange={setShowCreateAdminDialog}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Create Admin
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create Admin Account</DialogTitle>
+                    <DialogDescription>
+                      Create a new administrator account with full access
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CreateAdminForm onSubmit={handleCreateAdmin} />
+                </DialogContent>
+              </Dialog>
+            </div>
+            
+            <div className="max-h-60 overflow-y-auto">
+              {adminUsers.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">Loading admin users...</p>
+              ) : (
+                <div className="space-y-2">
+                  {adminUsers.map((admin) => (
+                    <div key={admin.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium">{admin.full_name}</p>
+                        <p className="text-sm text-gray-600">{admin.email}</p>
+                        {admin.phone_number && (
+                          <p className="text-sm text-gray-500">{admin.phone_number}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Admin</Badge>
+                        {admin.id !== currentUserId && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDemoteToInvestor(admin.id, admin.full_name)}
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            Demote
+                          </Button>
+                        )}
+                        {admin.id === currentUserId && (
+                          <Badge variant="outline" className="text-blue-600">
+                            You
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Investors Table/Cards */}
       <div className="block">
@@ -428,6 +584,16 @@ export default function AdminDashboard() {
                           title="Edit Investor"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handlePromoteToAdmin(investor.id, investor.full_name || 'Unknown')}
+                          title="Promote to Admin"
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        >
+                          <Users className="h-4 w-4 mr-1" />
+                          <span className="text-xs">Admin</span>
                         </Button>
                         <Select
                           value={investor.status}
@@ -532,6 +698,15 @@ export default function AdminDashboard() {
                     >
                       <Edit className="h-4 w-4" />
                       <span className="hidden xs:inline">Edit</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handlePromoteToAdmin(investor.id, investor.full_name || 'Unknown')}
+                      className="flex items-center gap-1 flex-1 text-blue-600 hover:text-blue-700"
+                    >
+                      <Users className="h-4 w-4" />
+                      <span className="hidden xs:inline">Admin</span>
                     </Button>
                   </div>
                   <div className="flex gap-2">

@@ -658,3 +658,268 @@ async function sendPaymentEmail(email: string, fullName: string, paymentData: {
     console.error('Error sending payment email:', error);
   }
 }
+
+export async function createAdminAccount(data: {
+  email: string;
+  password: string;
+  full_name: string;
+  phone_number?: string;
+}): Promise<{ success: boolean; id: string }> {
+  await checkAdminAuth();
+
+  if (!data.email || !data.password || !data.full_name) {
+    throw new Error('Email, password, and full name are required');
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(data.email)) {
+    throw new Error('Please provide a valid email address');
+  }
+
+  // Validate password strength
+  if (data.password.length < 8) {
+    throw new Error('Password must be at least 8 characters long');
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Check if email already exists
+      const [existingUser] = await connection.execute<RowDataPacket[]>(
+        'SELECT id FROM users WHERE email = ?',
+        [data.email]
+      );
+
+      if (existingUser.length > 0) {
+        throw new Error('An account with this email already exists');
+      }
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const userId = uuidv4();
+      const profileId = uuidv4();
+
+      // Create user account
+      await connection.execute(
+        'INSERT INTO users (id, email, password, email_verified) VALUES (?, ?, ?, ?)',
+        [userId, data.email, hashedPassword, 1] // Admin accounts are pre-verified
+      );
+
+      // Create admin profile
+      await connection.execute(
+        `INSERT INTO profiles (id, user_id, full_name, phone_number, role) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [profileId, userId, data.full_name, data.phone_number || null, 'admin']
+      );
+
+      await connection.commit();
+      connection.release();
+
+      console.log('✅ Admin account created successfully:', { userId, email: data.email, name: data.full_name });
+
+      return { success: true, id: userId };
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Error creating admin account:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to create admin account');
+  }
+}
+
+export async function getAdminUsers(): Promise<Array<{
+  id: string;
+  email: string;
+  full_name: string;
+  phone_number: string | null;
+  created_at: string;
+  last_login?: string;
+}>> {
+  await checkAdminAuth();
+
+  try {
+    const [admins] = await pool.query<RowDataPacket[]>(`
+      SELECT 
+        u.id,
+        u.email,
+        u.created_at,
+        p.full_name,
+        p.phone_number
+      FROM users u
+      JOIN profiles p ON u.id = p.user_id
+      WHERE p.role = 'admin'
+      ORDER BY u.created_at DESC
+    `);
+
+    return admins.map(admin => ({
+      id: admin.id,
+      email: admin.email,
+      full_name: admin.full_name,
+      phone_number: admin.phone_number,
+      created_at: admin.created_at
+    }));
+  } catch (error) {
+    console.error('❌ Error fetching admin users:', error);
+    throw new Error('Failed to fetch admin users');
+  }
+}
+
+export async function promoteInvestorToAdmin(investorUserId: string): Promise<{ success: boolean }> {
+  await checkAdminAuth();
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Check if user exists and is currently an investor
+      const [userCheck] = await connection.execute<RowDataPacket[]>(
+        `SELECT u.id, u.email, p.role, p.full_name 
+         FROM users u 
+         JOIN profiles p ON u.id = p.user_id 
+         WHERE u.id = ?`,
+        [investorUserId]
+      );
+
+      if (!userCheck.length) {
+        throw new Error('User not found');
+      }
+
+      const user = userCheck[0];
+      if (user.role === 'admin') {
+        throw new Error('User is already an admin');
+      }
+
+      if (user.role !== 'investor') {
+        throw new Error('Only investors can be promoted to admin');
+      }
+
+      // Update user role to admin
+      await connection.execute(
+        'UPDATE profiles SET role = ? WHERE user_id = ?',
+        ['admin', investorUserId]
+      );
+
+      await connection.commit();
+      connection.release();
+
+      console.log('✅ Investor promoted to admin:', { 
+        userId: investorUserId, 
+        email: user.email, 
+        name: user.full_name 
+      });
+
+      return { success: true };
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Error promoting investor to admin:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to promote investor to admin');
+  }
+}
+
+export async function demoteAdminToInvestor(adminUserId: string, currentAdminUserId: string): Promise<{ success: boolean }> {
+  await checkAdminAuth();
+
+  try {
+    // Prevent self-demotion
+    if (adminUserId === currentAdminUserId) {
+      throw new Error('You cannot demote yourself');
+    }
+
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Check if user exists and is currently an admin
+      const [userCheck] = await connection.execute<RowDataPacket[]>(
+        `SELECT u.id, u.email, p.role, p.full_name 
+         FROM users u 
+         JOIN profiles p ON u.id = p.user_id 
+         WHERE u.id = ?`,
+        [adminUserId]
+      );
+
+      if (!userCheck.length) {
+        throw new Error('User not found');
+      }
+
+      const user = userCheck[0];
+      if (user.role !== 'admin') {
+        throw new Error('User is not an admin');
+      }
+
+      // Check if this is the last admin (prevent system lockout)
+      const [adminCount] = await connection.execute<RowDataPacket[]>(
+        'SELECT COUNT(*) as admin_count FROM profiles WHERE role = "admin"'
+      );
+
+      if (adminCount[0].admin_count <= 1) {
+        throw new Error('Cannot demote the last admin user. At least one admin must remain.');
+      }
+
+      // Update user role to investor
+      await connection.execute(
+        'UPDATE profiles SET role = ? WHERE user_id = ?',
+        ['investor', adminUserId]
+      );
+
+      // Check if they need an investor record (they might not have one if they were created as admin)
+      const [investorCheck] = await connection.execute<RowDataPacket[]>(
+        'SELECT id FROM investors WHERE user_id = ?',
+        [adminUserId]
+      );
+
+      if (!investorCheck.length) {
+        // Create basic investor record
+        const { v4: uuidv4 } = require('uuid');
+        const investorId = uuidv4();
+        
+        await connection.execute(
+          `INSERT INTO investors (
+            id, user_id, full_name, email, phone_number,
+            total_investment, number_of_bikes, monthly_return,
+            investment_date, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            investorId,
+            adminUserId,
+            user.full_name,
+            user.email,
+            null, // phone will be updated from profile if available
+            0.00, // default investment
+            0, // default bikes
+            0.00, // default return
+            new Date().toISOString().split('T')[0], // today
+            'pending' // needs setup
+          ]
+        );
+      }
+
+      await connection.commit();
+      connection.release();
+
+      console.log('✅ Admin demoted to investor:', { 
+        userId: adminUserId, 
+        email: user.email, 
+        name: user.full_name 
+      });
+
+      return { success: true };
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Error demoting admin to investor:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to demote admin to investor');
+  }
+}
