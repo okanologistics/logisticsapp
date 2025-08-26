@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 const dbConfig = {
   host: process.env.MYSQL_HOST || 'localhost',
   user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'okanologistics@123!'
+  password: process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || ''
 };
 
 export async function GET() {

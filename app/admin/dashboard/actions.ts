@@ -383,10 +383,26 @@ export async function deleteInvestor(id: string): Promise<{ success: boolean }> 
   }
 }
 
-export async function getInvestorPayments(investorId: string) {
+export async function getInvestorPayments(userId: string) {
   await checkAdminAuth();
 
   try {
+    console.log('🔍 Getting payments for user ID:', userId);
+    
+    // First, look up the investor ID from the investors table using the user ID
+    const [investorResult] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM investors WHERE user_id = ?',
+      [userId]
+    );
+    
+    if (!investorResult.length) {
+      console.log('❌ No investor found for user ID:', userId);
+      return [];
+    }
+    
+    const investorId = investorResult[0].id;
+    console.log('✅ Found investor ID:', investorId);
+    
     const [payments] = await pool.query<RowDataPacket[]>(
       `SELECT 
         id,

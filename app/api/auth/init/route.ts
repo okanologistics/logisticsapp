@@ -8,7 +8,7 @@ export async function POST() {
     const connection = await mysql.createConnection({
       host: process.env.MYSQL_HOST || 'localhost',
       user: process.env.MYSQL_USER || 'root',
-      password: process.env.MYSQL_PASSWORD || 'okanologistics@123!'
+      password: process.env.MYSQL_PASSWORD || process.env.MYSQL_ROOT_PASSWORD || ''
     });
 
     // Create database if it doesn't exist
