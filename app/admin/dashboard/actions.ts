@@ -406,15 +406,15 @@ export async function getInvestorPayments(userId: string) {
     const [payments] = await pool.query<RowDataPacket[]>(
       `SELECT 
         id,
-        amount,
+        COALESCE(total_amount, amount) as amount,
+        total_amount,
+        interest_amount,
+        principal_amount,
         payment_date,
         payment_type,
         status,
         notes,
         created_at,
-        total_amount,
-        interest_amount,
-        principal_amount,
         payout_frequency
       FROM payments 
       WHERE investor_id = ? 
@@ -551,21 +551,24 @@ export async function addPaymentRecord(userId: string, data: {
     const investorId = investorResult[0].id;
     console.log('✅ Found investor ID:', investorId);
     
-    // For now, store breakdown in notes and amount field until DB schema is updated
-    const breakdownNotes = `[${data.payout_frequency.toUpperCase()}] Interest: ₦${data.interest_amount.toLocaleString()}, Principal: ₦${data.principal_amount.toLocaleString()}. ${data.notes || ''}`;
-    
     console.log('💾 Inserting payment record...');
     await pool.query(
       `INSERT INTO payments (
-        id, investor_id, amount, payment_date, status, notes
-      ) VALUES (?, ?, ?, ?, ?, ?)`,
+        id, investor_id, amount, total_amount, interest_amount, principal_amount, 
+        payment_date, status, notes, payout_frequency, payment_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         paymentId,
         investorId,
         data.total_amount,
+        data.total_amount,
+        data.interest_amount,
+        data.principal_amount,
         data.payment_date || new Date().toISOString().split('T')[0],
         data.status || 'completed',
-        breakdownNotes
+        data.notes || '',
+        data.payout_frequency,
+        'monthly_return'
       ]
     );
 
