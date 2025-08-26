@@ -74,7 +74,6 @@ export function Footer() {
               <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Express Delivery</a></li>
               <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Haulage Services</a></li>
               <li><span className="text-gray-300">Private Car Services with Optional Security Escort</span></li>
-              <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Accommodation Booking</a></li>
               <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Flight Services</a></li>
             </ul>
           </div>
