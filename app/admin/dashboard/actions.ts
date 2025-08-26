@@ -143,6 +143,28 @@ export async function createInvestor(data: InvestorInput): Promise<{ success: bo
         ]
       );
 
+      // Insert into investors table (required for payments foreign key)
+      const investorId = uuidv4();
+      await connection.query(
+        `INSERT INTO investors (
+          id, user_id, full_name, email, phone_number,
+          total_investment, number_of_bikes, monthly_return,
+          investment_date, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          investorId,
+          userId,
+          data.full_name,
+          data.email,
+          data.phone_number || '',
+          data.total_investment,
+          data.number_of_bikes,
+          0, // monthly_return will be calculated
+          data.investment_date || new Date().toISOString().split('T')[0],
+          data.status || 'active'
+        ]
+      );
+
       // Calculate total payout: capital + 25% profit distributed over 12 months
       const totalPayout = data.total_investment + (data.total_investment * 0.25);
       const monthlyReturn = totalPayout / 12;
@@ -481,7 +503,7 @@ export async function updateInvestmentDetails(investorId: string, data: {
   }
 }
 
-export async function addPaymentRecord(investorId: string, data: {
+export async function addPaymentRecord(userId: string, data: {
   total_amount: number;
   interest_amount: number;
   principal_amount: number;
@@ -493,11 +515,30 @@ export async function addPaymentRecord(investorId: string, data: {
   await checkAdminAuth();
 
   try {
+    console.log('🔄 Adding payment for user ID:', userId);
+    console.log('💰 Payment data:', data);
+    
     const paymentId = uuidv4();
+    
+    // Look up the investor ID from the investors table using the user ID
+    console.log('🔍 Looking up investor ID for user:', userId);
+    const [investorResult] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM investors WHERE user_id = ?',
+      [userId]
+    );
+    
+    if (!investorResult.length) {
+      console.log('❌ No investor found for user ID:', userId);
+      throw new Error(`No investor found for user ID: ${userId}`);
+    }
+    
+    const investorId = investorResult[0].id;
+    console.log('✅ Found investor ID:', investorId);
     
     // For now, store breakdown in notes and amount field until DB schema is updated
     const breakdownNotes = `[${data.payout_frequency.toUpperCase()}] Interest: ₦${data.interest_amount.toLocaleString()}, Principal: ₦${data.principal_amount.toLocaleString()}. ${data.notes || ''}`;
     
+    console.log('💾 Inserting payment record...');
     await pool.query(
       `INSERT INTO payments (
         id, investor_id, amount, payment_date, status, notes
@@ -512,14 +553,20 @@ export async function addPaymentRecord(investorId: string, data: {
       ]
     );
 
-    // Send notification to investor
-    await sendPaymentNotification(investorId, {
+    console.log('✅ Payment record inserted successfully!');
+    console.log('📧 Sending payment notification...');
+
+    // Send notification to investor (using userId for notification lookup)
+    await sendPaymentNotification(userId, {
       total_amount: data.total_amount,
       interest_amount: data.interest_amount,
       principal_amount: data.principal_amount,
       payout_frequency: data.payout_frequency,
       payment_date: data.payment_date || new Date().toISOString().split('T')[0]
     });
+
+    console.log('✅ Payment notification sent successfully!');
+    console.log('🎉 Payment process completed for ID:', paymentId);
 
     return { success: true, id: paymentId };
   } catch (error) {
