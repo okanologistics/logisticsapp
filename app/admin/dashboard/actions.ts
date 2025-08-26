@@ -534,7 +534,8 @@ export async function addPaymentRecord(userId: string, data: {
     console.log('🔄 Adding payment for user ID:', userId);
     console.log('💰 Payment data:', data);
     
-    const paymentId = uuidv4();
+    // Check for duplicate payment on the same date for same user
+    const paymentDate = data.payment_date || new Date().toISOString().split('T')[0];
     
     // Look up the investor ID from the investors table using the user ID
     console.log('🔍 Looking up investor ID for user:', userId);
@@ -551,6 +552,23 @@ export async function addPaymentRecord(userId: string, data: {
     const investorId = investorResult[0].id;
     console.log('✅ Found investor ID:', investorId);
     
+    // Check for existing payment on the same date
+    const [existingPayments] = await pool.query<RowDataPacket[]>(
+      'SELECT id FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
+      [investorId, paymentDate]
+    );
+    
+    if (existingPayments.length > 0) {
+      console.log('⚠️ Payment already exists for this date:', paymentDate);
+      return { 
+        success: false, 
+        id: '', 
+        message: `Payment already exists for ${paymentDate}` 
+      } as any;
+    }
+    
+    const paymentId = uuidv4();
+    
     console.log('💾 Inserting payment record...');
     await pool.query(
       `INSERT INTO payments (
@@ -564,7 +582,7 @@ export async function addPaymentRecord(userId: string, data: {
         data.total_amount,
         data.interest_amount,
         data.principal_amount,
-        data.payment_date || new Date().toISOString().split('T')[0],
+        paymentDate,
         data.status || 'completed',
         data.notes || '',
         data.payout_frequency,
