@@ -188,7 +188,8 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
         };
       }
       
-      await addPaymentRecord(investor.id, {
+      // Add timeout to prevent hanging UI (30 seconds max)
+      const paymentPromise = addPaymentRecord(investor.id, {
         total_amount: amountData.totalAmount,
         interest_amount: amountData.interestAmount,
         principal_amount: amountData.principalAmount,
@@ -198,8 +199,14 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
         notes: paymentData.notes,
         allow_duplicate: paymentData.allow_duplicate,
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Payment processing timed out. Please check if the payment was recorded.')), 30000)
+      );
+
+      await Promise.race([paymentPromise, timeoutPromise]);
       
-      toast.success('Payment recorded and notifications sent successfully');
+      toast.success('Payment recorded successfully! Email notification is being sent.');
       setShowAddPayment(false);
       setPaymentData({
         payout_frequency: 'monthly',
@@ -210,6 +217,7 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
         custom_interest_amount: 0,
         custom_principal_amount: 0,
         use_custom_amounts: false,
+        allow_duplicate: false, // Reset the duplicate override checkbox
       });
       loadPaymentHistory();
       onUpdate?.();
@@ -427,10 +435,16 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
               <p className="font-medium">{formatDate(investor.next_payout_date)}</p>
             </div>
           )}
-          {investor.last_payment && (
+          {/* Show last payment date from payment history */}
+          {paymentHistory && paymentHistory.length > 0 ? (
             <div>
               <p className="text-xs md:text-sm text-gray-500">Last Payment Date</p>
-              <p className="font-medium text-sm md:text-base">{formatDate(investor.last_payment)}</p>
+              <p className="font-medium text-sm md:text-base">{formatDate(paymentHistory[0].payment_date)}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs md:text-sm text-gray-500">Last Payment Date</p>
+              <p className="font-medium text-sm md:text-base text-gray-400">No payments yet</p>
             </div>
           )}
         </div>

@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { sign } from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
-
-// Create email transporter
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+import { sendEmail } from '@/lib/email';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
   try {
@@ -40,24 +30,26 @@ export async function POST(request: Request) {
 
     const user = users[0];
 
-    // Generate reset token
+    // Generate a shorter reset token for database storage (UUID-based)
+    const resetTokenId = uuidv4();
+    
+    // Generate JWT token for the email link (not stored in DB)
     const resetToken = sign(
-      { id: user.id, email: user.email, purpose: 'password-reset' },
+      { id: user.id, email: user.email, purpose: 'password-reset', tokenId: resetTokenId },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '1h' }
     );
 
-    // Save reset token in database
+    // Save only the shorter UUID in database
     await pool.execute(
       'UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
-      [resetToken, user.id]
+      [resetTokenId, user.id]
     );
 
-    // Send reset email
+    // Send reset email with retry logic
     const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
     
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@okanologistics.com',
+    const emailResult = await sendEmail({
       to: email,
       subject: 'Password Reset Request - Okano Logistics',
       html: `
@@ -73,10 +65,22 @@ export async function POST(request: Request) {
       `,
     });
 
-    return NextResponse.json(
-      { message: "Password reset email sent successfully" },
-      { status: 200 }
-    );
+    if (!emailResult.success) {
+      console.warn('⚠️ Email sending failed, but reset token saved. User can contact support.');
+      
+      // Still return success since the reset token is saved - user can contact support
+      return NextResponse.json({
+        success: true,
+        message: 'Reset token generated. If you don\'t receive an email, please contact support with your email address.',
+        emailSent: false
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Password reset email sent successfully",
+      emailSent: true
+    });
   } catch (error) {
     console.error('Password reset error:', error);
     return NextResponse.json(

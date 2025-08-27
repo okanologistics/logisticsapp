@@ -11,16 +11,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Verify token
+    // Verify JWT token
     const payload = await verifyToken(token);
-    if (!payload || payload.purpose !== 'password-reset') {
+    if (!payload || payload.purpose !== 'password-reset' || !payload.tokenId) {
       return NextResponse.json({ error: 'Invalid or expired reset token' }, { status: 400 });
     }
 
-    // Check if token is still valid in database
+    // Check if the UUID token is still valid in database
     const [users] = await pool.execute(
       'SELECT id FROM users WHERE id = ? AND reset_token = ? AND reset_token_expires > NOW()',
-      [payload.id, token]
+      [payload.id, payload.tokenId]
     );
 
     if (!Array.isArray(users) || users.length === 0) {

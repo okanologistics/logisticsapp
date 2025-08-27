@@ -54,8 +54,20 @@ export async function getDashboardData(): Promise<{ stats: DashboardStats; inves
         DATE_FORMAT(inv.maturity_date, '%Y-%m-%d') as maturity_date,
         DATE_FORMAT(inv.next_payout_date, '%Y-%m-%d') as next_payout_date,
         COALESCE(inv.investment_status, 'pending') as status,
-        CAST(COALESCE((SELECT SUM(amount) FROM payments WHERE investor_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci), 0) AS DECIMAL(15,2)) as total_returns,
-        (SELECT DATE_FORMAT(payment_date, '%Y-%m-%d') FROM payments WHERE investor_id COLLATE utf8mb4_unicode_ci = u.id COLLATE utf8mb4_unicode_ci ORDER BY payment_date DESC LIMIT 1) as last_payment
+        CAST(COALESCE((
+          SELECT SUM(total_amount) 
+          FROM payments pay 
+          JOIN investors inv_pay ON pay.investor_id = inv_pay.id 
+          WHERE inv_pay.user_id = u.id AND pay.status = 'completed'
+        ), 0) AS DECIMAL(15,2)) as total_returns,
+        (
+          SELECT DATE_FORMAT(pay.payment_date, '%Y-%m-%d') 
+          FROM payments pay 
+          JOIN investors inv_pay ON pay.investor_id = inv_pay.id 
+          WHERE inv_pay.user_id = u.id AND pay.status = 'completed'
+          ORDER BY pay.payment_date DESC 
+          LIMIT 1
+        ) as last_payment
       FROM users u
       LEFT JOIN profiles p ON u.id COLLATE utf8mb4_unicode_ci = p.user_id COLLATE utf8mb4_unicode_ci
       LEFT JOIN investment_details inv ON u.id COLLATE utf8mb4_unicode_ci = inv.investor_id COLLATE utf8mb4_unicode_ci
@@ -531,6 +543,8 @@ export async function addPaymentRecord(userId: string, data: {
 }): Promise<{ success: boolean; id: string }> {
   await checkAdminAuth();
 
+  const connection = await pool.getConnection();
+  
   try {
     console.log('🔄 Adding payment for user ID:', userId);
     console.log('💰 Payment data:', data);
@@ -538,9 +552,12 @@ export async function addPaymentRecord(userId: string, data: {
     // Check for duplicate payment on the same date for same user
     const paymentDate = data.payment_date || new Date().toISOString().split('T')[0];
     
+    // Start transaction for consistency
+    await connection.beginTransaction();
+    
     // Look up the investor ID from the investors table using the user ID
     console.log('🔍 Looking up investor ID for user:', userId);
-    const [investorResult] = await pool.query<RowDataPacket[]>(
+    const [investorResult] = await connection.query<RowDataPacket[]>(
       'SELECT id, user_id FROM investors WHERE user_id = ?',
       [userId]
     );
@@ -549,18 +566,13 @@ export async function addPaymentRecord(userId: string, data: {
       console.log('❌ No investor found for user ID:', userId);
       
       // Debug: Check if the user exists at all
-      const [userCheck] = await pool.query<RowDataPacket[]>(
+      const [userCheck] = await connection.query<RowDataPacket[]>(
         'SELECT id, email FROM users WHERE id = ?',
         [userId]
       );
       console.log('👤 User check result:', userCheck.length > 0 ? userCheck[0] : 'User not found');
       
-      // Debug: Check what investors exist
-      const [allInvestors] = await pool.query<RowDataPacket[]>(
-        'SELECT id, user_id, email FROM investors LIMIT 5'
-      );
-      console.log('📊 Sample investors in database:', allInvestors);
-      
+      await connection.rollback();
       throw new Error(`No investor found for user ID: ${userId}`);
     }
     
@@ -569,8 +581,8 @@ export async function addPaymentRecord(userId: string, data: {
     
     // Check for existing payment on the same date (unless override is enabled)
     if (!data.allow_duplicate) {
-      const [existingPayments] = await pool.query<RowDataPacket[]>(
-        'SELECT id, DATE_FORMAT(payment_date, "%Y-%m-%d") as formatted_date FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed"',
+      const [existingPayments] = await connection.query<RowDataPacket[]>(
+        'SELECT id FROM payments WHERE investor_id = ? AND DATE(payment_date) = ? AND status = "completed" LIMIT 1',
         [investorId, paymentDate]
       );
       
@@ -582,6 +594,7 @@ export async function addPaymentRecord(userId: string, data: {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const suggestedDate = tomorrow.toISOString().split('T')[0];
         
+        await connection.rollback();
         throw new Error(`Payment already exists for ${paymentDate}. Try using ${suggestedDate} or enable "Allow Duplicate" to override.`);
       }
     } else {
@@ -591,7 +604,7 @@ export async function addPaymentRecord(userId: string, data: {
     const paymentId = uuidv4();
     
     console.log('💾 Inserting payment record...');
-    await pool.query(
+    await connection.query(
       `INSERT INTO payments (
         id, investor_id, amount, total_amount, interest_amount, principal_amount, 
         payment_date, status, notes, payout_frequency, payment_type
@@ -611,23 +624,30 @@ export async function addPaymentRecord(userId: string, data: {
       ]
     );
 
-    console.log('✅ Payment record inserted successfully!');
-    console.log('📧 Sending payment notification...');
+    // Commit the transaction to ensure payment is saved
+    await connection.commit();
+    console.log('✅ Payment record inserted and committed successfully!');
 
-    // Send notification to investor (using userId for notification lookup)
-    await sendPaymentNotification(userId, {
-      total_amount: data.total_amount,
-      interest_amount: data.interest_amount,
-      principal_amount: data.principal_amount,
-      payout_frequency: data.payout_frequency,
-      payment_date: data.payment_date || new Date().toISOString().split('T')[0]
+    // Send notification ASYNCHRONOUSLY (fire-and-forget) - don't await this
+    console.log('📧 Scheduling async payment notification...');
+    setImmediate(() => {
+      sendPaymentNotification(userId, {
+        total_amount: data.total_amount,
+        interest_amount: data.interest_amount,
+        principal_amount: data.principal_amount,
+        payout_frequency: data.payout_frequency,
+        payment_date: data.payment_date || new Date().toISOString().split('T')[0]
+      }).catch(error => {
+        console.error('⚠️ Payment notification failed (non-blocking):', error.message);
+        // Store failed notification for retry later if needed
+      });
     });
 
-    console.log('✅ Payment notification sent successfully!');
     console.log('🎉 Payment process completed for ID:', paymentId);
-
     return { success: true, id: paymentId };
+    
   } catch (error) {
+    await connection.rollback();
     console.error('Error adding payment record:', error);
     
     // Preserve specific error messages (especially for duplicates)
@@ -638,6 +658,8 @@ export async function addPaymentRecord(userId: string, data: {
     
     // Only use generic message for unknown errors
     throw new Error('Failed to add payment record');
+  } finally {
+    connection.release();
   }
 }
 

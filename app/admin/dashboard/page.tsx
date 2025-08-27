@@ -90,7 +90,9 @@ export default function AdminDashboard() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
   const [investorToDelete, setInvestorToDelete] = useState<InvestorDetailsType | null>(null);
+  const [investorToPromote, setInvestorToPromote] = useState<{ id: string; name: string } | null>(null);
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [error, setError] = useState('');
@@ -234,14 +236,25 @@ export default function AdminDashboard() {
   }
 
   async function handlePromoteToAdmin(investorUserId: string, investorName: string) {
+    // Show confirmation dialog instead of promoting directly
+    setInvestorToPromote({ id: investorUserId, name: investorName });
+    setShowPromoteDialog(true);
+  }
+
+  async function confirmPromoteToAdmin() {
+    if (!investorToPromote) return;
+    
     try {
-      await promoteInvestorToAdmin(investorUserId);
-      toast.success(`${investorName} has been promoted to admin`);
+      await promoteInvestorToAdmin(investorToPromote.id);
+      toast.success(`${investorToPromote.name} has been promoted to admin`);
       loadDashboardData(); // Refresh the investor list
       loadAdminUsers(); // Refresh admin list if open
     } catch (error) {
       console.error('Error promoting to admin:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to promote to admin');
+    } finally {
+      setShowPromoteDialog(false);
+      setInvestorToPromote(null);
     }
   }
 
@@ -878,6 +891,64 @@ export default function AdminDashboard() {
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Promote to Admin Confirmation Dialog */}
+      <AlertDialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
+        <AlertDialogContent className="sm:max-w-[500px] bg-gradient-to-br from-white to-blue-50/30 border-0 shadow-2xl backdrop-blur-sm">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-orange-500/5 pointer-events-none" />
+          <AlertDialogHeader className="relative z-10">
+            <AlertDialogTitle className="text-xl font-bold text-blue-600 flex items-center gap-3">
+              <div className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-lg">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              Promote to Admin
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-700 leading-relaxed mt-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="font-medium text-blue-800 mb-2">
+                  Are you sure you want to promote &quot;{investorToPromote?.name}&quot; to admin?
+                </p>
+                <p className="text-blue-700 text-sm">
+                  This will grant them full administrative access to the system.
+                </p>
+              </div>
+              <div className="space-y-2 text-sm">
+                <p className="font-medium text-gray-800 mb-2">Admin privileges include:</p>
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-gray-700">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                    View and manage all investor accounts
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-700">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                    Process payments and financial transactions
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-700">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                    Access sensitive system data and reports
+                  </li>
+                  <li className="flex items-center gap-2 text-gray-700">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full flex-shrink-0" />
+                    Create and manage other admin accounts
+                  </li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="relative z-10 pt-6 border-t border-blue-200/60">
+            <AlertDialogCancel className="hover:bg-gray-100 transition-all duration-200">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmPromoteToAdmin}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 ease-out"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Promote to Admin
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

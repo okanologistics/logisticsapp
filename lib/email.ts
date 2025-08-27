@@ -4,15 +4,15 @@ import nodemailer from 'nodemailer';
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT),
-  secure: Number(process.env.SMTP_PORT) === 465, // true for 465, false for 587
-  requireTLS: Number(process.env.SMTP_PORT) === 587, // true for 587
+  secure: process.env.SMTP_SECURE === 'true', // Use SMTP_SECURE env var
+  requireTLS: process.env.SMTP_SECURE !== 'true', // Only require TLS if not using SSL
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   },
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 5000,    // 5 seconds
-  socketTimeout: 15000,     // 15 seconds
+  connectionTimeout: 20000, // 20 seconds
+  greetingTimeout: 10000,   // 10 seconds
+  socketTimeout: 30000,     // 30 seconds
   pool: true,               // Use connection pooling
   maxConnections: 5,        // Limit concurrent connections
   maxMessages: 100,         // Limit messages per connection

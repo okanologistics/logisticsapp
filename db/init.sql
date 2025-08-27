@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     email_verified BOOLEAN DEFAULT FALSE,
     email_verified_at TIMESTAMP NULL,
-    reset_token VARCHAR(255) NULL,
+    reset_token TEXT NULL,
     reset_token_expires TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
