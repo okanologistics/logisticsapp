@@ -52,8 +52,8 @@ export default function Services() {
         "Optional security escort service",
         "24/7 availability"
       ],
-      image: "/carhire.jpg",
-      pricing: "From ₦15,000",
+      image: "/carhiresuv.jpg",
+      pricing: "From ₦20,000",
       duration: "Flexible"
     },
     {
