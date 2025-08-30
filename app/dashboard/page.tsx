@@ -61,6 +61,7 @@ interface Payment {
   notes?: string;
   status: string;
   created_at: string;
+  payment_date?: string;
 }
 
 interface Notification {
@@ -525,7 +526,8 @@ export default function InvestorDashboard() {
                         payments.map((payment) => (
                           <TableRow key={payment.id} className="hover:bg-gray-50/50 transition-colors">
                             <TableCell className="font-medium">
-                              {payment?.created_at ? new Date(payment.created_at).toLocaleDateString() : 'N/A'}
+                              {payment?.payment_date ? new Date(payment.payment_date).toLocaleDateString() : 
+                               payment?.created_at ? new Date(payment.created_at).toLocaleDateString() : 'N/A'}
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1">

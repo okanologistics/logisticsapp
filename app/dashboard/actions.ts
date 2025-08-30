@@ -197,7 +197,14 @@ export const getInvestorData = async (): Promise<DashboardData> => {
       
       if (tableCheck.length > 0) {
         const [paymentRows] = await connection.execute<mysql.RowDataPacket[]>(
-          'SELECT id, investor_id as user_id, amount, total_amount, interest_amount, principal_amount, payout_frequency, payment_type, status, notes, DATE_FORMAT(created_at, "%Y-%m-%d %H:%i:%s") as created_at FROM payments WHERE investor_id = ? ORDER BY created_at DESC',
+          `SELECT p.id, p.investor_id, p.amount, p.total_amount, p.interest_amount, p.principal_amount, 
+                  p.payout_frequency, p.payment_type, p.status, p.notes, 
+                  DATE_FORMAT(p.created_at, "%Y-%m-%d %H:%i:%s") as created_at,
+                  DATE_FORMAT(p.payment_date, "%Y-%m-%d") as payment_date
+           FROM payments p 
+           JOIN investors i ON p.investor_id = i.id 
+           WHERE i.user_id = ? 
+           ORDER BY p.created_at DESC`,
           [investor.id]
         );
         dashboardPayments = paymentRows as Payment[];
@@ -214,7 +221,11 @@ export const getInvestorData = async (): Promise<DashboardData> => {
       
       if (tableCheck.length > 0) {
         const [notificationRows] = await connection.execute<mysql.RowDataPacket[]>(
-          'SELECT id, investor_id as user_id, message, DATE_FORMAT(created_at, "%Y-%m-%d %H:%i:%s") as created_at, `read` FROM notifications WHERE investor_id = ? ORDER BY created_at DESC',
+          `SELECT n.id, n.investor_id, n.message, DATE_FORMAT(n.created_at, "%Y-%m-%d %H:%i:%s") as created_at, n.\`read\` 
+           FROM notifications n 
+           JOIN investors i ON n.investor_id = i.id 
+           WHERE i.user_id = ? 
+           ORDER BY n.created_at DESC`,
           [investor.id]
         );
         dashboardNotifications = notificationRows as Notification[];

@@ -74,9 +74,10 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
   // Calculate payment breakdown based on frequency
   const calculatePaymentBreakdown = (frequency: 'weekly' | 'monthly') => {
     const totalInvestment = investor.total_investment || 0;
+    const monthlyReturnFromDB = investor.monthly_return || 0;
     
     // Validate investment amount
-    if (totalInvestment <= 0) {
+    if (totalInvestment <= 0 || monthlyReturnFromDB <= 0) {
       return {
         interestAmount: 0,
         principalAmount: 0,
@@ -85,13 +86,24 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
       };
     }
     
+    // Use database values to ensure consistency
+    const annualTotalPayout = monthlyReturnFromDB * 12;
     const totalProfit = totalInvestment * 0.25; // 25% profit over the investment period
     const periods = frequency === 'weekly' ? 52 : 12; // 52 weeks or 12 months
     
-    // Calculate per-period amounts with proper rounding
-    const interestPerPeriod = Math.round((totalProfit / periods) * 100) / 100;
-    const principalPerPeriod = Math.round((totalInvestment / periods) * 100) / 100;
-    const totalPerPeriod = Math.round((interestPerPeriod + principalPerPeriod) * 100) / 100;
+    // For consistent calculation, use the stored monthly return
+    let totalPerPeriod, interestPerPeriod, principalPerPeriod;
+    
+    if (frequency === 'monthly') {
+      totalPerPeriod = monthlyReturnFromDB; // Use exact DB value
+      interestPerPeriod = Math.round((totalProfit / 12) * 100) / 100;
+      principalPerPeriod = Math.round(totalPerPeriod - interestPerPeriod, 2);
+    } else {
+      // Weekly: calculate from annual total payout
+      totalPerPeriod = Math.round((annualTotalPayout / 52) * 100) / 100;
+      interestPerPeriod = Math.round((totalProfit / 52) * 100) / 100;
+      principalPerPeriod = Math.round((totalInvestment / 52) * 100) / 100;
+    }
     
     return {
       interestAmount: interestPerPeriod,
@@ -109,18 +121,29 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
   // Calculate individual return components
   const calculateReturns = () => {
     const totalInvestment = investor.total_investment || 0;
-    const annualReturn = totalInvestment * 0.25; // 25% annual return
-    
+    const monthlyReturnFromDB = investor.monthly_return || 0;
+    const totalInterest = totalInvestment * 0.25; // 25% interest
+    const totalPayout = totalInvestment + totalInterest; // principal + interest
+    const annualTotalPayout = monthlyReturnFromDB * 12;
+    const weeklyReturn = annualTotalPayout / 52;
     return {
-      weeklyReturn: annualReturn / 52, // Weekly return (profit only)
-      monthlyReturn: annualReturn / 12, // Monthly return (profit only) 
-      annualReturn: annualReturn, // Annual return (profit only)
-      principalAmount: totalInvestment, // Original investment
-      totalPayout: totalInvestment + annualReturn // Principal + profit
+      weeklyReturn: weeklyReturn,
+      monthlyReturn: monthlyReturnFromDB,
+      annualReturn: totalInterest,
+      principalAmount: totalInvestment,
+      totalPayout: totalPayout
     };
   };
 
   const returns = calculateReturns();
+
+  // Calculate total returns paid (sum of completed payments)
+  const totalReturnsPaid = (paymentHistory && paymentHistory.length > 0)
+    ? paymentHistory.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.total_amount || p.amount || 0), 0)
+    : 0;
+
+  // Calculate total balance (total payout - total returns paid)
+  const totalBalance = returns.totalPayout - totalReturnsPaid;
 
   // Initialize custom amounts with calculated values
   const initializeCustomAmounts = (frequency: 'weekly' | 'monthly') => {
@@ -129,7 +152,7 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
       ...prev,
       custom_total_amount: breakdown.totalAmount,
       custom_interest_amount: breakdown.interestAmount,
-      custom_principal_amount: breakdown.principalAmount,
+      custom_principal_amount: breakdown.principalAmount
     }));
   };
 
@@ -421,7 +444,11 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
           </div>
           <div>
             <p className="text-xs md:text-sm text-gray-500">Total Returns Paid</p>
-            <p className="font-medium text-sm md:text-base">{formatCurrency(investor.total_returns || 0)}</p>
+            <p className="font-medium text-sm md:text-base">{formatCurrency(totalReturnsPaid)}</p>
+          </div>
+          <div>
+            <p className="text-xs md:text-sm text-gray-500">Total Balance</p>
+            <p className="font-medium text-sm md:text-base">{formatCurrency(totalBalance)}</p>
           </div>
           {investor.maturity_date && (
             <div>
