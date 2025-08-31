@@ -97,7 +97,7 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
     if (frequency === 'monthly') {
       totalPerPeriod = monthlyReturnFromDB; // Use exact DB value
       interestPerPeriod = Math.round((totalProfit / 12) * 100) / 100;
-      principalPerPeriod = Math.round(totalPerPeriod - interestPerPeriod, 2);
+      principalPerPeriod = Math.round((totalPerPeriod - interestPerPeriod) * 100) / 100;
     } else {
       // Weekly: calculate from annual total payout
       totalPerPeriod = Math.round((annualTotalPayout / 52) * 100) / 100;
