@@ -427,6 +427,7 @@ export async function getInvestorPayments(userId: string) {
         status,
         notes,
         created_at,
+        DATE_FORMAT(payment_date, '%Y-%m-%d') as payment_date_formatted,
         payout_frequency
       FROM payments 
       WHERE investor_id = ? 

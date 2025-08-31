@@ -255,8 +255,8 @@ export const getInvestorData = async (): Promise<DashboardData> => {
     const numberOfBikes = investor.number_of_bikes || 0;
     const monthlyReturn = investor.monthly_return || 0;
     
-    // Total return should be capital + 25% profit (total amount to be paid out)
-    const totalReturn = totalInvestment + (totalInvestment * 0.25); // Capital + 25% profit
+    // Total return should be the total expected payout (capital + profit) based on monthly return
+    const totalReturn = monthlyReturn * 12; // Total expected payout over 12 months
     const remainingAmount = totalReturn - totalPayouts;
     
     console.log('Investment data:', {

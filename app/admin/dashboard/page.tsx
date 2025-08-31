@@ -172,12 +172,16 @@ export default function AdminDashboard() {
 
   async function handleViewDetails(investor: InvestorDetailsType) {
     setSelectedInvestor(investor);
+    setSelectedInvestorPayments([]); // Clear previous payments
     try {
+      console.log('Loading payments for investor:', investor.id);
       const payments = await getInvestorPayments(investor.id);
-      setSelectedInvestorPayments(payments);
+      console.log('Loaded payments:', payments);
+      setSelectedInvestorPayments(payments || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
       setSelectedInvestorPayments([]);
+      toast.error('Failed to load payment history');
     }
     setShowDetailsDialog(true);
   }

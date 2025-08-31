@@ -123,7 +123,8 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
     const totalInvestment = investor.total_investment || 0;
     const monthlyReturnFromDB = investor.monthly_return || 0;
     const totalInterest = totalInvestment * 0.25; // 25% interest
-    const totalPayout = totalInvestment + totalInterest; // principal + interest
+    // Use the database monthly return to calculate total payout (already includes principal + interest portions)
+    const totalPayout = monthlyReturnFromDB * 12; // Total expected payout over 12 months
     const annualTotalPayout = monthlyReturnFromDB * 12;
     const weeklyReturn = annualTotalPayout / 52;
     return {
@@ -138,12 +139,19 @@ export function InvestorDetails({ investor, payments = [], onUpdate }: InvestorD
   const returns = calculateReturns();
 
   // Calculate total returns paid (sum of completed payments)
-  const totalReturnsPaid = (paymentHistory && paymentHistory.length > 0)
-    ? paymentHistory.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.total_amount || p.amount || 0), 0)
+  const totalReturnsPaid = (paymentHistory && Array.isArray(paymentHistory) && paymentHistory.length > 0)
+    ? paymentHistory
+        .filter(p => p && p.status === 'completed')
+        .reduce((sum, p) => {
+          const amount = Number(p?.total_amount) || Number(p?.amount) || 0;
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
     : 0;
 
   // Calculate total balance (total payout - total returns paid)
-  const totalBalance = returns.totalPayout - totalReturnsPaid;
+  const totalBalance = isNaN(returns.totalPayout) || isNaN(totalReturnsPaid)
+    ? 0
+    : returns.totalPayout - totalReturnsPaid;
 
   // Initialize custom amounts with calculated values
   const initializeCustomAmounts = (frequency: 'weekly' | 'monthly') => {

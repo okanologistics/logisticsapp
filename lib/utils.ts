@@ -6,14 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number): string {
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    return '₦0.00';
+  }
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN'
   }).format(amount);
 }
 
-export function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-NG', {
+export function formatDate(date: string | null | undefined): string {
+  if (!date) return 'N/A';
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) return 'Invalid Date';
+  return parsedDate.toLocaleDateString('en-NG', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
