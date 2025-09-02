@@ -141,17 +141,19 @@ export default function Home() {
               </div>
             </div>
             <div className={`${isVisible ? 'slide-up' : 'opacity-0'}`}> 
-              <img
-                src={heroImages[currentHeroIndex]}
-                alt="Delivery services"
-                className="rounded-lg shadow-2xl w-full h-auto transition-all duration-700"
-                key={heroImages[currentHeroIndex]}
-              />
-              <div className="flex justify-center mt-2 gap-2">
+              <div className="relative w-full h-80 md:h-96 lg:h-[28rem] overflow-hidden rounded-lg shadow-2xl">
+                <img
+                  src={heroImages[currentHeroIndex]}
+                  alt="Delivery services"
+                  className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+                  key={heroImages[currentHeroIndex]}
+                />
+              </div>
+              <div className="flex justify-center mt-4 gap-2">
                 {heroImages.map((_, idx) => (
                   <button
                     key={idx}
-                    className={`w-2 h-2 rounded-full ${idx === currentHeroIndex ? 'bg-orange' : 'bg-gray-300'}`}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${idx === currentHeroIndex ? 'bg-orange scale-110' : 'bg-gray-300 hover:bg-gray-400'}`}
                     onClick={() => setCurrentHeroIndex(idx)}
                     aria-label={`Go to slide ${idx + 1}`}
                   />
