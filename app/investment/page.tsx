@@ -186,9 +186,9 @@ export default function Investment() {
                     <label className="block text-sm font-medium mb-2">Investment Amount</label>
                     <input
                       type="range"
-                      min="500000"
-                      max="5000000"
-                      step="500000"
+                      min="1400000"
+                      max="14000000"
+                      step="1400000"
                       value={investmentAmount}
                       onChange={(e) => setInvestmentAmount(Number(e.target.value))}
                       className="w-full"

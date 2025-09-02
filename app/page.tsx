@@ -26,12 +26,14 @@ export default function Home() {
 
   const services = [
     {
+      id: "express-delivery",
       icon: Package,
       title: "Express Delivery & Pickup",
       description: "Fast, reliable delivery services across Nigeria with real-time tracking.",
       image: "https://images.pexels.com/photos/4391470/pexels-photo-4391470.jpeg?auto=compress&cs=tinysrgb&w=500"
     },
     {
+      id: "private-car-services",
       icon: Car,
       title: "Private Car Services with Optional Security Escort",
       description: "Comfortable, professional transportation services for all your needs. Optional security escort service available upon request.",
@@ -39,18 +41,21 @@ export default function Home() {
       image: "/carhiresuv.jpg"
     },
     {
+      id: "haulage-services",
       icon: Truck,
       title: "Haulage Services",
       description: "Heavy-duty transportation for large goods and commercial cargo.",
       image: "/haulage2.png"
     },
     {
+      id: "hire-purchase-investment",
       icon: TrendingUp,
       title: "Bike Investment",
       description: "Invest in delivery bikes and earn passive income with guaranteed returns.",
       image: "/bike.jpg"
     },
     {
+      id: "flight-booking",
       icon: TrendingUp,
       title: "Flight Ticket Booking",
       description: "Book flights for your business or personal needs with ease.",
@@ -201,7 +206,7 @@ export default function Home() {
                     <h3 className="text-xl font-semibold text-navy font-poppins">{service.title}</h3>
                   </div>
                   <p className="text-gray-600 mb-4">{service.description}</p>
-                  <Link href="/services" className="text-orange hover:text-orange-600 font-medium inline-flex items-center">
+                  <Link href={`/services#${service.id}`} className="text-orange hover:text-orange-600 font-medium inline-flex items-center">
                     Learn More
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Link>

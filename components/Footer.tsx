@@ -70,11 +70,11 @@ export function Footer() {
           {/* Services */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold font-poppins">Services</h3>
-                        <ul className="space-y-3">
-              <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Express Delivery</a></li>
-              <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Haulage Services</a></li>
-              <li><span className="text-gray-300">Private Car Services with Optional Security Escort</span></li>
-              <li><a href="/services" className="text-gray-300 hover:text-white transition-colors">Flight Services</a></li>
+            <ul className="space-y-3">
+              <li><a href="/services#express-delivery" className="text-gray-300 hover:text-white transition-colors">Express Delivery</a></li>
+              <li><a href="/services#haulage-services" className="text-gray-300 hover:text-white transition-colors">Haulage Services</a></li>
+              <li><a href="/services#private-car-services" className="text-gray-300 hover:text-white transition-colors">Private Car Services with Optional Security Escort</a></li>
+              <li><a href="/services#flight-booking" className="text-gray-300 hover:text-white transition-colors">Flight Services</a></li>
             </ul>
           </div>
 

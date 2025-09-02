@@ -22,10 +22,27 @@ export default function Services() {
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Smooth scroll to anchor if present in URL
+    if (window.location.hash) {
+      const element = document.querySelector(window.location.hash);
+      if (element) {
+        // Add delay to ensure page is fully loaded
+        setTimeout(() => {
+          element.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+          // Offset for sticky header (adjust scroll position)
+          window.scrollBy(0, -100);
+        }, 100);
+      }
+    }
   }, []);
 
   const services = [
     {
+      id: "express-delivery",
       icon: Package,
       title: "Express Delivery & Pickup",
       description: "Fast and reliable delivery services with real-time tracking across Nigeria.",
@@ -40,6 +57,7 @@ export default function Services() {
       duration: "2-24 hours"
     },
     {
+      id: "private-car-services",
       icon: Car,
       title: "Private Car Services with Optional Security Escort",
       description: "Comfortable and professional transportation for business and personal needs. Optional security escort service available upon request.",
@@ -57,6 +75,7 @@ export default function Services() {
       duration: "Flexible"
     },
     {
+      id: "haulage-services",
       icon: Truck,
       title: "Haulage Services",
       description: "Heavy-duty transportation for large goods and commercial cargo.",
@@ -72,6 +91,7 @@ export default function Services() {
       duration: "1-5 days"
     },
     {
+      id: "hire-purchase-investment",
       icon: TrendingUp,
       title: "Hire Purchase Investment",
       description: "Invest in delivery bikes and earn passive income through our managed investment program.",
@@ -87,6 +107,7 @@ export default function Services() {
       duration: "12+ months"
     },
     {
+      id: "flight-booking",
       icon: Plane, // Make sure to import Plane icon from lucide-react or use a suitable icon
       title: "Flight Ticket Booking",
       description: "Book local and international flights with ease.",
@@ -135,7 +156,7 @@ export default function Services() {
         <div className="container-max">
           <div className="space-y-16">
             {services.map((service, index) => (
-              <div key={index} className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${index % 2 === 1 ? 'lg:grid-flow-col-reverse' : ''}`}>
+              <div key={index} id={service.id} className={`scroll-mt-24 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${index % 2 === 1 ? 'lg:grid-flow-col-reverse' : ''}`}>
                 <div className="space-y-6">
                   <div className="flex items-center space-x-3">
                     <service.icon className="h-8 w-8 text-orange" />
