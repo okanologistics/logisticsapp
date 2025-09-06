@@ -92,7 +92,7 @@ export default function Investment() {
     {
       step: "04",
       title: "Start Earning",
-      description: "Receive monthly returns and track performance through your investor dashboard.",
+      description: "Receive weekly returns and track performance through your investor dashboard.",
       icon: TrendingUp
     }
   ];
