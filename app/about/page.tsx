@@ -125,7 +125,7 @@ export default function About() {
     { year: "2020", event: "Founded Okano Logistics Services", description: "Started with a vision to revolutionize logistics in Nigeria" },
     { year: "2021", event: "Expanded to more States", description: "Grew our delivery network across major Nigerian cities" },
     { year: "2022", event: "Launched Investment Program", description: "Introduced bike investment opportunities for passive income" },
-    { year: "2023", event: "84000+ Deliveries", description: "Reached milestone of 5000 successful deliveries" },
+    { year: "2023", event: "84000+ Deliveries", description: "Reached milestone of 84000 successful deliveries" },
     { year: "2024", event: "Technology Innovation", description: "Implemented web application for logistics optimization" }
   ];
 
@@ -153,7 +153,7 @@ export default function About() {
                   <div className="text-sm text-gray-600">Deliveries</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange">83500+</div>
+                  <div className="text-2xl font-bold text-orange">50000+</div>
                   <div className="text-sm text-gray-600">Happy Clients</div>
                 </div>
               </div>

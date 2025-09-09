@@ -62,7 +62,7 @@ export default function Contact() {
     {
       icon: Phone,
       title: "Call Us",
-      details: "+234 703 722 1197, +234 812 967 7481",
+      details: "+234 703 722 1197, +234 812 967 7481, +234 812 432 5208",
       action: "Call Now",
       link: "tel:+2347037221197"
     },

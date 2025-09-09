@@ -83,17 +83,36 @@ export default function Home() {
       content: "I've had a great experience working with this logistics company. Their team is professional, responsive, and always ensures that deliveries are made on time. I always feel informed about where my shipments are, they've consistently met my expectations. Okano Logistics is highly recommended for anyone looking for dependable logistics services.",
       avatar: "/sammy.jpg"
     },
+
+    {
+      name: "Edith Itohan",
+      role: "Investor",
+      content: " Investing with Okano Logistics has been a game changer for me. The returns are consistent, and the team is always available to answer my questions. I appreciate the transparency and the ease of tracking my investment online. I feel secure knowing my capital is protected and managed by professionals",
+      avatar: "/.jpg"
+    },
     {
       name: "Sarah Brenda",
       role: "Entrepreneur",
       content: "What I love most is the passive nature of this investment. I don't have to worry about operations - just collect my monthly returns and track progress online.",
       avatar: "sarah.jpg"
+    },
+   {
+      name: "Omo Uwangue",
+      role: "Entrepreneur",
+      content: "I was initially skeptical, but Okano Logistics exceeded my expectations. The weekly payouts are always on time, and the reporting is clear and detailed. Their customer service is top-notch, and I’ve recommended this investment to friends and family. It’s a reliable way to grow my income.",
+      avatar: ".jpg"
+    },
+    {
+      name: "Clark Obinna",
+      role: "Investor",
+      content: "As an investor, I value trust and reliability. Okano Logistics delivers both. The process was straightforward, and I’ve enjoyed watching my investment grow. The passive income has helped me achieve my financial goals, and I’m planning to reinvest again next cycle.",
+      avatar: ".jpg"
     }
   ];
 
   const stats = [
     { number: "84000+", label: "Deliveries Completed", icon: Package },
-    { number: "83500+", label: "Happy Clients", icon: Users },
+    { number: "50000+", label: "Happy Clients", icon: Users },
     { number: "50+", label: "Delivery Bikes", icon: Truck },
     { number: "98%", label: "Success Rate", icon: Award }
   ];

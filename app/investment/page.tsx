@@ -125,6 +125,34 @@ export default function Investment() {
       avatar: "sarah.jpg",
       monthlyReturn: "₦"
     }
+     ,
+      {
+        name: "Edith Itohan",
+        role: "Investor",
+        investment: "₦",
+        bikes: 1,
+        content: "Investing with Okano Logistics has been a game changer for me. The returns are consistent, and the team is always available to answer my questions. I appreciate the transparency and the ease of tracking my investment online. I feel secure knowing my capital is protected and managed by professionals.",
+        avatar: "edith.jpg",
+        monthlyReturn: "₦"
+      },
+      {
+        name: "Omo Uwangue",
+        role: "Investor",
+        investment: "₦",
+        bikes: 1,
+        content: "I was initially skeptical, but Okano Logistics exceeded my expectations. The weekly payouts are always on time, and the reporting is clear and detailed. Their customer service is top-notch, and I’ve recommended this investment to friends and family. It’s a reliable way to grow my income.",
+        avatar: "omo.jpg",
+        monthlyReturn: "₦"
+      },
+      {
+        name: "Clark Obinna",
+        role: "Investor",
+        investment: "₦",
+        bikes: 1,
+        content: "As an investor, I value trust and reliability. Okano Logistics delivers both. The process was straightforward, and I’ve enjoyed watching my investment grow. The passive income has helped me achieve my financial goals, and I’m planning to reinvest again next cycle.",
+        avatar: "clark.jpg",
+        monthlyReturn: "₦"
+      }
   ];
 
   const stats = [
