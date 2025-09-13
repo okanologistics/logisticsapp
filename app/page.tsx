@@ -112,7 +112,7 @@ export default function Home() {
 
   const stats = [
     { number: "84000+", label: "Deliveries Completed", icon: Package },
-    { number: "50000+", label: "Happy Clients", icon: Users },
+    { number: "80000+", label: "Happy Clients", icon: Users },
     { number: "50+", label: "Delivery Bikes", icon: Truck },
     { number: "98%", label: "Success Rate", icon: Award }
   ];
