@@ -303,7 +303,7 @@ export default function About() {
                   <img
                     src={member.image}
                     alt={member.name}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300"
                   />
                 </div>
                 <div className="p-6">
@@ -313,6 +313,103 @@ export default function About() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Team Group Photos Showcase */}
+      <section className="section-padding bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="container-max">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-navy font-poppins mb-4">
+              Our Team in Action
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Behind every successful delivery is a dedicated team working together. 
+              Here's a glimpse of our amazing crew making logistics excellence happen every day.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* First Group Photo */}
+            <div className="group relative overflow-hidden rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img
+                  src="/team4.jpg"
+                  alt="Okano Logistics Best Team"
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy/90 to-transparent p-6">
+                <h3 className="text-white font-bold text-xl font-poppins mb-2">The Dream Team</h3>
+                <p className="text-gray-200 text-sm">United in excellence, driven by passion</p>
+              </div>
+            </div>
+
+            {/* Second Group Photo */}
+            <div className="group relative overflow-hidden rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img
+                  src="/team2.jpg"
+                  alt="Okano Logistics Best Team"
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy/90 to-transparent p-6">
+                <h3 className="text-white font-bold text-xl font-poppins mb-2">The Dream Team</h3>
+                <p className="text-gray-200 text-sm">United in excellence, driven by passion</p>
+              </div>
+            </div>
+
+            {/* Third Group Photo */}
+            <div className="group relative overflow-hidden rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img
+                  src="/team3.jpg"
+                  alt="Okano Logistics Best Team"
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-navy/90 to-transparent p-6">
+                <h3 className="text-white font-bold text-xl font-poppins mb-2">The Dream Team</h3>
+                <p className="text-gray-200 text-sm">United in excellence, driven by passion</p>
+              </div>
+            </div>
+
+            {/* Fourth Group Photo */}
+            <div className="group relative overflow-hidden rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300">
+              <div className="aspect-[4/3] overflow-hidden">
+                <img
+                  src="/team1.jpg"
+                  alt="Okano Logistics Management Team"
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-orange/90 to-transparent p-6">
+                <h3 className="text-white font-bold text-xl font-poppins mb-2">Leadership Excellence</h3>
+                <p className="text-white text-sm">Our management team steering innovation forward</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Team Stats */}
+          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-xl shadow-lg text-center hover:shadow-xl transition-shadow duration-300">
+              <div className="text-3xl font-bold text-orange mb-2">50+</div>
+              <div className="text-sm text-gray-600">Team Members</div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-lg text-center hover:shadow-xl transition-shadow duration-300">
+              <div className="text-3xl font-bold text-orange mb-2">100%</div>
+              <div className="text-sm text-gray-600">Commitment</div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-lg text-center hover:shadow-xl transition-shadow duration-300">
+              <div className="text-3xl font-bold text-orange mb-2">24/7</div>
+              <div className="text-sm text-gray-600">Availability</div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-lg text-center hover:shadow-xl transition-shadow duration-300">
+              <div className="text-3xl font-bold text-orange mb-2">4+</div>
+              <div className="text-sm text-gray-600">Years Strong</div>
+            </div>
           </div>
         </div>
       </section>
