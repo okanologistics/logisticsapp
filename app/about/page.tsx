@@ -414,6 +414,32 @@ export default function About() {
         </div>
       </section>
 
+      {/* Introductory Video Section */}
+      <section className="section-padding bg-gradient-to-br from-navy to-blue-900">
+        <div className="container-max">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-white font-poppins mb-4">
+              See Us in Action
+            </h2>
+            <p className="text-gray-200 max-w-2xl mx-auto">
+              Watch our story unfold and discover how we're revolutionizing logistics in Nigeria.
+            </p>
+          </div>
+          <div className="max-w-5xl mx-auto">
+            <div className="relative overflow-hidden rounded-2xl shadow-2xl" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src="https://www.youtube.com/embed/GYMT8L6SxDg"
+                title="Okano Logistics Introduction"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Investors Section */}
       {/* <section className="section-padding">
         <div className="container-max">
