@@ -153,7 +153,7 @@ export default function About() {
                   <div className="text-sm text-gray-600">Deliveries</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-orange">50000+</div>
+                  <div className="text-2xl font-bold text-orange">80000+</div>
                   <div className="text-sm text-gray-600">Happy Clients</div>
                 </div>
               </div>
