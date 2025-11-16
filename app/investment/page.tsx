@@ -145,7 +145,7 @@ export default function Investment() {
         monthlyReturn: "₦"
       },
       {
-        name: "Clark Obinna",
+        name: "Bright Edegbe",
         role: "Investor",
         investment: "₦",
         bikes: 1,

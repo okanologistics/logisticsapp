@@ -103,7 +103,7 @@ export default function Home() {
       avatar: ".jpg"
     },
     {
-      name: "Clark Obinna",
+      name: "Bright Edegbe",
       role: "Investor",
       content: "As an investor, I value trust and reliability. Okano Logistics delivers both. The process was straightforward, and I’ve enjoyed watching my investment grow. The passive income has helped me achieve my financial goals, and I’m planning to reinvest again next cycle.",
       avatar: ".jpg"
